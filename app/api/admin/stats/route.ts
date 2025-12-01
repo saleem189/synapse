@@ -23,7 +23,10 @@ export async function GET() {
     }
 
     const stats = await adminService.getStats();
-    return NextResponse.json(stats);
+    // Add caching headers - stats can be cached for 30 seconds
+    const response = NextResponse.json(stats);
+    response.headers.set('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
+    return response;
   } catch (error) {
     return handleError(error);
   }

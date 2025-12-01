@@ -4,7 +4,7 @@
 // Global state management for current user using Zustand
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, devtools } from 'zustand/middleware';
 import type { User } from '@/lib/types';
 
 interface UserStore {
@@ -17,22 +17,30 @@ interface UserStore {
 /**
  * Global user store
  * Persists user data to localStorage
+ * Includes DevTools support for debugging
  */
 export const useUserStore = create<UserStore>()(
-  persist(
-    (set) => ({
-      user: null,
-      setUser: (user) => set({ user }),
-      clearUser: () => set({ user: null }),
-      updateUser: (updates) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, ...updates } : null,
-        })),
-    }),
-    {
-      name: 'user-storage', // localStorage key
-      partialize: (state) => ({ user: state.user }), // Only persist user
-    }
+  devtools(
+    persist(
+      (set) => ({
+        user: null,
+        setUser: (user) => set({ user }, false, 'setUser'),
+        clearUser: () => set({ user: null }, false, 'clearUser'),
+        updateUser: (updates) =>
+          set(
+            (state) => ({
+              user: state.user ? { ...state.user, ...updates } : null,
+            }),
+            false,
+            'updateUser'
+          ),
+      }),
+      {
+        name: 'user-storage', // localStorage key
+        partialize: (state) => ({ user: state.user }), // Only persist user
+      }
+    ),
+    { name: 'UserStore' } // DevTools name
   )
 );
 

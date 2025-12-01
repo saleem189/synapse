@@ -13,6 +13,9 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { ReactNode } from "react";
+import { ReactQueryProvider } from "@/lib/react-query-provider";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { RouteChangeHandler } from "@/components/route-change-handler";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -27,15 +30,19 @@ export function Providers({ children }: ProvidersProps) {
         enableSystem
         disableTransitionOnChange={false}
       >
-        {children}
-        <Toaster 
-          position="top-right" 
-          richColors 
-          closeButton
-          toastOptions={{
-            duration: 4000,
-          }}
-        />
+        <ReactQueryProvider>
+          <KeyboardShortcuts />
+          <RouteChangeHandler />
+          {children}
+          <Toaster 
+            position="top-right" 
+            richColors 
+            closeButton
+            toastOptions={{
+              duration: 4000,
+            }}
+          />
+        </ReactQueryProvider>
       </ThemeProvider>
     </SessionProvider>
   );

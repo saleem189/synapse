@@ -10,9 +10,11 @@ import { authOptions } from "@/lib/auth";
 import { handleError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { getService } from "@/lib/di";
 import { UserService } from "@/lib/services/user.service";
+import { QueueService } from "@/lib/queue/queue-service";
 
 // Get services from DI container
 const userService = getService<UserService>('userService');
+const queueService = getService<QueueService>('queueService');
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,20 +63,30 @@ export async function POST(request: NextRequest) {
     const fileName = `${session.user.id}_${timestamp}_${randomString}.${fileExtension}`;
     const filePath = join(avatarsDir, fileName);
 
-    // Convert file to buffer and save
+    // Convert file to buffer and save temporarily
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
-    // Return file URL
-    const avatarUrl = `/avatars/${fileName}`;
+    // Temporary file URL (will be replaced by optimized version)
+    const tempAvatarUrl = `/avatars/${fileName}`;
 
-    // Update user's avatar in database
-    await userService.updateAvatar(session.user.id, avatarUrl);
+    // Queue avatar optimization job
+    // The job processor will create optimized version and update user's avatar
+    const jobId = await queueService.addAvatarOptimization(
+      tempAvatarUrl,
+      session.user.id
+    );
 
+    // Return temporary URL immediately
+    // Optimized version will be available and database updated when job completes
     return NextResponse.json({
-      avatar: avatarUrl,
-      message: "Profile picture updated successfully",
+      avatar: tempAvatarUrl,
+      message: "Profile picture uploaded successfully. Optimizing in background...",
+      processing: {
+        jobId,
+        status: "queued",
+      },
     });
   } catch (error) {
     return handleError(error);

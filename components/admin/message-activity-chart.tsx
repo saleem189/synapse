@@ -5,7 +5,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
 import {
   BarChart,
   Bar,
@@ -17,7 +16,7 @@ import {
   Cell,
 } from "recharts";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
+import { useSocket } from "@/hooks/use-socket";
 
 interface DataPoint {
   minute: string;
@@ -28,6 +27,7 @@ interface DataPoint {
 export function MessageActivityChart() {
   const [data, setData] = useState<DataPoint[]>([]);
   const [liveMessages, setLiveMessages] = useState(0);
+  const { socket, isConnected } = useSocket();
 
   useEffect(() => {
     // Initialize with 24 empty data points (one per minute)
@@ -42,13 +42,18 @@ export function MessageActivityChart() {
     }
     setData(initialData);
 
-    const socket = io(SOCKET_URL);
+    setData(initialData);
+
+    if (!socket || !isConnected) return;
+
     let messageCount = 0;
 
-    socket.on("receive-message", () => {
+    const handleReceiveMessage = () => {
       messageCount++;
       setLiveMessages(messageCount);
-    });
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
 
     // Update chart every minute
     const interval = setInterval(() => {
@@ -69,10 +74,10 @@ export function MessageActivityChart() {
     }, 60000);
 
     return () => {
-      socket.disconnect();
+      socket.off("receive-message", handleReceiveMessage);
       clearInterval(interval);
     };
-  }, []);
+  }, [socket, isConnected]);
 
   // Update current minute with live messages
   const dataWithLive = data.map((point, index) => {
@@ -131,8 +136,8 @@ export function MessageActivityChart() {
             formatter={(value: number) => [value, "Messages"]}
             labelFormatter={(label) => `${23 - parseInt(label)} minutes ago`}
           />
-          <Bar 
-            dataKey="messages" 
+          <Bar
+            dataKey="messages"
             radius={[8, 8, 0, 0]}
             label={({ value, x, y, width, height }: any) => {
               // Only show label if value is greater than 0
@@ -160,8 +165,8 @@ export function MessageActivityChart() {
                   index === dataWithLive.length - 1
                     ? "#3b82f6" // Primary blue for current minute
                     : entry.messages > 0
-                    ? "#60a5fa" // Lighter blue for past
-                    : "#e5e7eb" // Gray for empty
+                      ? "#60a5fa" // Lighter blue for past
+                      : "#e5e7eb" // Gray for empty
                 }
               />
             ))}

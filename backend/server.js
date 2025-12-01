@@ -8,6 +8,11 @@ const { Server } = require("socket.io");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { logger } = require("./logger");
+const { RateLimiterMemory } = require("rate-limiter-flexible");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const { createClient } = require("redis");
+require('dotenv').config();
 
 // Message flow logger helper functions
 const LOG_FILE = path.join(process.cwd(), 'message-flow.log');
@@ -19,8 +24,8 @@ function writeLog(entry) {
       timestamp: new Date().toISOString(),
     }) + '\n';
     fs.appendFileSync(LOG_FILE, logLine, 'utf8');
-    
-    // Also log to console
+
+    // Also log to console (using logger)
     const emoji = {
       'API_RECEIVE': '📥',
       'API_BROADCAST': '📤',
@@ -33,15 +38,34 @@ function writeLog(entry) {
       'ROOM_LEAVE': '📤',
       'ERROR': '❌',
     }[entry.stage] || '📋';
-    
-    console.log(`${emoji} [${entry.stage}] ${entry.messageId || entry.socketId || 'N/A'} | Room: ${entry.roomId || 'N/A'} | ${JSON.stringify(entry.details)}`);
+
+    logger.log(`${emoji} [${entry.stage}] ${entry.messageId || entry.socketId || 'N/A'} | Room: ${entry.roomId || 'N/A'} | ${JSON.stringify(entry.details)}`);
   } catch (error) {
-    console.error('Failed to write to log file:', error);
+    // Use logger.error for critical errors (always logs)
+    logger.error('Failed to write to log file:', error);
   }
 }
 
 const PORT = process.env.SOCKET_PORT || 3001;
-const CORS_ORIGIN = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+const NODE_ENV = process.env.NODE_ENV || "development";
+console.log(NODE_ENV)
+
+// CORS configuration - more secure for production
+const getCorsOrigins = () => {
+  if (NODE_ENV === "production") {
+    // In production, only allow the configured URL
+    const productionUrl = process.env.NEXT_PUBLIC_URL;
+    if (!productionUrl) {
+      logger.warn("⚠️ NEXT_PUBLIC_URL not set in production!");
+    }
+    return productionUrl ? [productionUrl] : [];
+  } else {
+    // In development, allow localhost
+    return ["http://localhost:3000", "http://127.0.0.1:3000"];
+  }
+};
+
+const CORS_ORIGINS = getCorsOrigins();
 
 // Create HTTP server
 const httpServer = http.createServer((req, res) => {
@@ -57,11 +81,118 @@ const httpServer = http.createServer((req, res) => {
 // Create Socket.io server
 const io = new Server(httpServer, {
   cors: {
-    origin: [CORS_ORIGIN, "http://localhost:3000"],
+    origin: CORS_ORIGINS.length > 0 ? CORS_ORIGINS : ["http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true,
+    // Additional security headers
+    allowedHeaders: ["Content-Type", "Authorization"],
   },
 });
+
+// =====================
+// REDIS ADAPTER (Optional - for horizontal scaling)
+// =====================
+// If Redis is configured, use it for multi-server support
+// Otherwise, fall back to in-memory adapter (single server)
+const REDIS_URL = process.env.REDIS_URL || process.env.REDISCLOUD_URL;
+
+let redisAdapterInitialized = false;
+
+async function initializeRedisAdapter() {
+  if (!REDIS_URL) {
+    logger.log("ℹ️  Redis not configured - using in-memory adapter (single server mode)");
+    logger.log("   To enable multi-server support, set REDIS_URL environment variable");
+    return false;
+  }
+
+  try {
+    logger.log("🔌 Connecting to Redis for Socket.IO adapter...");
+
+    // Create Redis clients
+    const pubClient = createClient({
+      url: REDIS_URL,
+      socket: {
+        reconnectStrategy: (retries) => {
+          if (retries > 10) {
+            logger.error("❌ Redis connection failed after 10 retries");
+            return new Error("Redis connection failed");
+          }
+          return Math.min(retries * 100, 3000);
+        },
+      },
+    });
+
+    const subClient = pubClient.duplicate();
+
+    // Handle connection errors
+    pubClient.on("error", (err) => {
+      logger.error("❌ Redis pub client error:", err);
+    });
+
+    subClient.on("error", (err) => {
+      logger.error("❌ Redis sub client error:", err);
+    });
+
+    // Connect both clients
+    await Promise.all([pubClient.connect(), subClient.connect()]);
+
+    // Set up adapter
+    io.adapter(createAdapter(pubClient, subClient));
+
+    redisAdapterInitialized = true;
+    logger.log("✅ Redis adapter initialized - multi-server support enabled");
+
+    return true;
+  } catch (error) {
+    logger.error("❌ Failed to initialize Redis adapter:", error);
+    logger.warn("⚠️  Falling back to in-memory adapter (single server mode)");
+    return false;
+  }
+}
+
+// =====================
+// RATE LIMITING
+// =====================
+// Rate limiters for Socket.IO events to prevent abuse and DoS attacks
+
+// Message rate limiter: 10 messages per second per user
+const messageRateLimiter = new RateLimiterMemory({
+  points: 10, // 10 messages
+  duration: 1, // per second
+  blockDuration: 60, // Block for 60 seconds if limit exceeded
+});
+
+// Typing rate limiter: 5 typing events per second per user
+const typingRateLimiter = new RateLimiterMemory({
+  points: 5, // 5 events
+  duration: 1, // per second
+});
+
+// Message update rate limiter: 5 updates per second per user
+const messageUpdateRateLimiter = new RateLimiterMemory({
+  points: 5, // 5 updates
+  duration: 1, // per second
+});
+
+// Read receipt rate limiter: 10 read receipts per second per user
+const readReceiptRateLimiter = new RateLimiterMemory({
+  points: 10, // 10 read receipts
+  duration: 1, // per second
+});
+
+// Helper function to apply rate limiting
+async function applyRateLimit(rateLimiter, identifier, eventName) {
+  try {
+    await rateLimiter.consume(identifier);
+    return { allowed: true };
+  } catch (rejRes) {
+    logger.warn(`⚠️ Rate limit exceeded for ${eventName} by user/socket: ${identifier}`);
+    return {
+      allowed: false,
+      retryAfter: Math.round(rejRes.msBeforeNext / 1000) || 1
+    };
+  }
+}
 
 // Track online users
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -74,13 +205,13 @@ function getOnlineUserIds() {
 
 function addOnlineUser(userId, socketId) {
   const wasAlreadyOnline = onlineUsers.has(userId);
-  
+
   if (!onlineUsers.has(userId)) {
     onlineUsers.set(userId, new Set());
   }
   onlineUsers.get(userId).add(socketId);
   socketToUser.set(socketId, userId);
-  
+
   // Only emit user-online if this is a NEW user coming online (not just another tab/connection)
   if (!wasAlreadyOnline) {
     io.emit("user-online", userId);
@@ -102,15 +233,45 @@ function removeOnlineUser(socketId) {
   }
 }
 
+// =====================
+// AUTHENTICATION MIDDLEWARE
+// =====================
+// Authenticate socket connections before allowing access
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  logger.log(`🔐 [Auth] Authenticating socket ${socket.id}...`);
+  logger.log(`📋 Token provided: ${token ? 'Yes' : 'No'}`);
+
+  if (!token) {
+    logger.warn(`❌ [Auth] No token provided, rejecting connection`);
+    return next(new Error('Authentication token required'));
+  }
+
+  // Verify token (for now, accept any non-empty string as user ID)
+  // In production, you should verify this is a valid user ID from your database
+  // or use JWT tokens
+  if (typeof token === 'string' && token.length > 0) {
+    // Store user ID on socket for later use
+    socket.userId = token;
+    logger.log(`✅ [Auth] Socket ${socket.id} authenticated as user ${token}`);
+    next();
+  } else {
+    logger.warn(`❌ [Auth] Invalid token format, rejecting connection`);
+    next(new Error('Invalid authentication token'));
+  }
+});
+
 // Socket connection handler
 io.on("connection", (socket) => {
-  console.log(`\n========== NEW SOCKET CONNECTION ==========`);
-  console.log(`✅ Socket ID: ${socket.id}`);
-  console.log(`📋 Address: ${socket.handshake.address}`);
-  console.log(`📋 Origin: ${socket.handshake.headers.origin || 'N/A'}`);
-  console.log(`📋 User-Agent: ${socket.handshake.headers['user-agent'] || 'N/A'}`);
-  console.log(`==========================================\n`);
-  
+  logger.log(`\n========== NEW SOCKET CONNECTION ==========`);
+  logger.log(`✅ Socket ID: ${socket.id}`);
+  logger.log(`👤 User ID: ${socket.userId || 'N/A (API socket)'}`);
+  logger.log(`📋 Address: ${socket.handshake.address}`);
+  logger.log(`📋 Origin: ${socket.handshake.headers.origin || 'N/A'}`);
+  logger.log(`📋 User-Agent: ${socket.handshake.headers['user-agent'] || 'N/A'}`);
+  logger.log(`==========================================\n`);
+
   // Log socket connection
   writeLog({
     stage: 'SOCKET_CONNECT',
@@ -122,30 +283,30 @@ io.on("connection", (socket) => {
       origin: socket.handshake.headers.origin || 'N/A',
     },
   });
-  
+
   // CRITICAL: Set up onAny handler IMMEDIATELY and synchronously
   // This must be done before any other async operations
-  console.log(`🔧 [Socket ${socket.id}] Setting up event handlers NOW...`);
-  console.log(`🔧 [Socket ${socket.id}] Socket object:`, {
+  logger.log(`🔧 [Socket ${socket.id}] Setting up event handlers NOW...`);
+  logger.log(`🔧 [Socket ${socket.id}] Socket object:`, {
     id: socket.id,
     connected: socket.connected,
     disconnected: socket.disconnected,
     rooms: Array.from(socket.rooms),
   });
-  
+
   // Debug: Log all events from this socket to both console and file
   // IMPORTANT: Set this up FIRST before any other handlers to catch all events
   socket.onAny((event, ...args) => {
     const eventData = args.length > 0 ? args[0] : null;
     const logMessage = `📡 [Socket ${socket.id}] Event: ${event}`;
-    console.log(logMessage, eventData ? JSON.stringify(eventData, null, 2) : '');
-    
+    logger.log(logMessage, eventData ? JSON.stringify(eventData, null, 2) : '');
+
     // Special handling for send-message to catch it early
     if (event === 'send-message') {
-      console.log(`\n🚨 [onAny] Caught "send-message" event from socket ${socket.id}`);
-      console.log(`📋 Event data:`, JSON.stringify(eventData, null, 2));
+      logger.log(`\n🚨 [onAny] Caught "send-message" event from socket ${socket.id}`);
+      logger.log(`📋 Event data:`, JSON.stringify(eventData, null, 2));
     }
-    
+
     // Log ALL events to file for complete flow tracking
     let stage = 'SOCKET_CONNECT';
     if (event === 'send-message') {
@@ -159,7 +320,7 @@ io.on("connection", (socket) => {
     } else if (event === 'disconnect') {
       stage = 'SOCKET_DISCONNECT';
     }
-    
+
     writeLog({
       stage: stage,
       socketId: socket.id,
@@ -172,18 +333,18 @@ io.on("connection", (socket) => {
       },
     });
   });
-  
-  console.log(`🔧 [Socket ${socket.id}] Event handlers set up, listening for all events...`);
-  console.log(`🔧 [Socket ${socket.id}] onAny handler registered, will catch ALL events including "send-message"`);
-  console.log(`🔧 [Socket ${socket.id}] Ready to receive events. Socket connected: ${socket.connected}`);
+
+  logger.log(`🔧 [Socket ${socket.id}] Event handlers set up, listening for all events...`);
+  logger.log(`🔧 [Socket ${socket.id}] onAny handler registered, will catch ALL events including "send-message"`);
+  logger.log(`🔧 [Socket ${socket.id}] Ready to receive events. Socket connected: ${socket.connected}`);
 
   // User connects
   socket.on("user-connect", (userId) => {
     if (!userId) return;
-    console.log(`👤 User ${userId} connected (socket: ${socket.id})`);
+    logger.log(`👤 User ${userId} connected (socket: ${socket.id})`);
     addOnlineUser(userId, socket.id);
     socket.userId = userId;
-    
+
     // Log user connection to file
     writeLog({
       stage: 'SOCKET_CONNECT',
@@ -198,19 +359,19 @@ io.on("connection", (socket) => {
 
   // Get online users (with debouncing to prevent loops)
   const ONLINE_USERS_DEBOUNCE_MS = 1000; // 1 second debounce
-  
+
   socket.on("get-online-users", () => {
     const now = Date.now();
     const lastRequest = socketLastRequest.get(socket.id) || 0;
-    
+
     // Debounce: only respond if last request was more than 1 second ago
     if (now - lastRequest < ONLINE_USERS_DEBOUNCE_MS) {
       return;
     }
     socketLastRequest.set(socket.id, now);
-    
+
     const users = getOnlineUserIds();
-    console.log(`📋 Sending online users:`, users);
+    logger.log(`📋 Sending online users:`, users);
     socket.emit("online-users", users);
   });
 
@@ -218,8 +379,8 @@ io.on("connection", (socket) => {
   socket.on("join-room", (roomId) => {
     if (!roomId) return;
     socket.join(roomId);
-    console.log(`📥 Socket ${socket.id} joined room: ${roomId}`);
-    
+    logger.log(`📥 Socket ${socket.id} joined room: ${roomId}`);
+
     // Log room join
     writeLog({
       stage: 'ROOM_JOIN',
@@ -236,8 +397,8 @@ io.on("connection", (socket) => {
   socket.on("leave-room", (roomId) => {
     if (!roomId) return;
     socket.leave(roomId);
-    console.log(`📤 Socket ${socket.id} left room: ${roomId}`);
-    
+    logger.log(`📤 Socket ${socket.id} left room: ${roomId}`);
+
     // Log room leave
     writeLog({
       stage: 'ROOM_LEAVE',
@@ -253,15 +414,34 @@ io.on("connection", (socket) => {
   // =====================
   // MESSAGE HANDLING
   // =====================
-  socket.on("send-message", (message, callback) => {
+  socket.on("send-message", async (message, callback) => {
+    // Skip rate limiting for API server socket (no userId)
+    const isFromAPI = !socket.userId;
+    const rateLimitIdentifier = socket.userId || socket.id;
+
+    if (!isFromAPI) {
+      // Apply rate limiting for client messages
+      const rateLimit = await applyRateLimit(messageRateLimiter, rateLimitIdentifier, 'send-message');
+      if (!rateLimit.allowed) {
+        logger.warn(`🚫 Rate limit exceeded for send-message by ${rateLimitIdentifier}`);
+        if (typeof callback === 'function') {
+          callback({
+            error: 'Rate limit exceeded. Please slow down.',
+            retryAfter: rateLimit.retryAfter
+          });
+        }
+        return;
+      }
+    }
+
     // Log socket receive IMMEDIATELY - this should be caught by onAny() too
-    console.log(`\n🔔 [SOCKET SERVER] Received "send-message" event from socket ${socket.id}`);
-    console.log(`📋 Message data:`, JSON.stringify(message, null, 2));
-    console.log(`📋 Callback provided: ${typeof callback === 'function'}`);
-    console.log(`📋 Socket still connected: ${socket.connected}`);
-    console.log(`📋 Socket userId: ${socket.userId || 'NONE (API socket)'}`);
-    console.log(`📋 Is from API: ${!socket.userId}`);
-    
+    logger.log(`\n🔔 [SOCKET SERVER] Received "send-message" event from socket ${socket.id}`);
+    logger.log(`📋 Message data:`, JSON.stringify(message, null, 2));
+    logger.log(`📋 Callback provided: ${typeof callback === 'function'}`);
+    logger.log(`📋 Socket still connected: ${socket.connected}`);
+    logger.log(`📋 Socket userId: ${socket.userId || 'NONE (API socket)'}`);
+    logger.log(`📋 Is from API: ${isFromAPI}`);
+
     writeLog({
       stage: 'SOCKET_RECEIVE',
       messageId: message?.id || 'unknown',
@@ -270,20 +450,20 @@ io.on("connection", (socket) => {
       socketId: socket.id,
       details: {
         action: 'Socket server received message',
-        isFromAPI: !socket.userId,
+        isFromAPI: isFromAPI,
         content: message?.content ? message.content.substring(0, 50) : 'media',
         hasCallback: typeof callback === 'function',
       },
     });
-    
-    console.log(`\n========== MESSAGE RECEIVED ==========`);
-    console.log(`From socket: ${socket.id}`);
-    console.log(`Message:`, JSON.stringify(message, null, 2));
-    
+
+    logger.log(`\n========== MESSAGE RECEIVED ==========`);
+    logger.log(`From socket: ${socket.id}`);
+    logger.log(`Message:`, JSON.stringify(message, null, 2));
+
     // Validate message has either content or file
     if (!message?.roomId || (!message?.content && !message?.fileUrl)) {
-      console.log(`❌ Invalid message - missing roomId, content, or file`);
-      
+      logger.warn(`❌ Invalid message - missing roomId, content, or file`);
+
       // Log error
       writeLog({
         stage: 'ERROR',
@@ -295,6 +475,9 @@ io.on("connection", (socket) => {
           socketId: socket.id,
         },
       });
+      if (typeof callback === 'function') {
+        callback({ error: 'Invalid message: missing required fields' });
+      }
       return;
     }
 
@@ -309,9 +492,9 @@ io.on("connection", (socket) => {
     // Use the message ID from the payload - API provides real DB ID, client provides temp ID
     // IMPORTANT: Always use the ID from the message payload to ensure proper matching
     const messageId = message.id; // Use the ID from the payload (real DB ID from API or temp ID from client)
-    
+
     if (!messageId) {
-      console.error(`❌ Message missing ID!`, message);
+      logger.error(`❌ Message missing ID!`, message);
       return;
     }
 
@@ -331,23 +514,20 @@ io.on("connection", (socket) => {
       createdAt: message.createdAt || new Date().toISOString(),
     };
 
-    console.log(`📤 Broadcasting to room ${message.roomId}...`);
-    console.log(`📋 Message ID: ${messageId} (${message.id ? 'from API' : 'temp'})`);
-    console.log(`📋 Reply data:`, JSON.stringify(replyToData, null, 2));
-    
-    // Check if this is from the API server socket (no userId) or a regular client
-    const isFromAPI = !socket.userId;
-    
+    logger.log(`📤 Broadcasting to room ${message.roomId}...`);
+    logger.log(`📋 Message ID: ${messageId} (${message.id ? 'from API' : 'temp'})`);
+    logger.log(`📋 Reply data:`, JSON.stringify(replyToData, null, 2));
+
     // Get room size for logging
     const room = io.sockets.adapter.rooms.get(message.roomId);
     const clientCount = room ? room.size : 0;
-    
+
     if (isFromAPI) {
       // If from API, broadcast to ALL users in the room (including sender's other tabs)
       // Use io.to() to broadcast from the server, not from the socket
       io.to(message.roomId).emit("receive-message", payload);
-      console.log(`✅ API message broadcast complete to room ${message.roomId} (all users, ${clientCount} clients)`);
-      
+      logger.log(`✅ API message broadcast complete to room ${message.roomId} (all users, ${clientCount} clients)`);
+
       // Log broadcast to file
       writeLog({
         stage: 'SOCKET_BROADCAST',
@@ -366,8 +546,8 @@ io.on("connection", (socket) => {
       // If from client, broadcast to all users EXCEPT the sender
       // The sender will receive the message via API response
       socket.to(message.roomId).emit("receive-message", payload);
-      console.log(`✅ Client message broadcast complete to room ${message.roomId} (excluding sender ${socket.userId}, ${clientCount - 1} clients)`);
-      
+      logger.log(`✅ Client message broadcast complete to room ${message.roomId} (excluding sender ${socket.userId}, ${clientCount - 1} clients)`);
+
       // Log broadcast to file
       writeLog({
         stage: 'SOCKET_BROADCAST',
@@ -383,25 +563,57 @@ io.on("connection", (socket) => {
         },
       });
     }
-    console.log(`==========================================\n`);
+    logger.log(`==========================================\n`);
+
+    // Send success callback if provided
+    if (typeof callback === 'function') {
+      callback({ success: true });
+    }
   });
 
   // Typing indicators
-  socket.on("typing", ({ roomId, userId, userName }) => {
+  socket.on("typing", async ({ roomId, userId, userName }) => {
     if (!roomId) return;
-    console.log(`⌨️ ${userName} is typing in ${roomId}`);
+
+    // Apply rate limiting
+    const rateLimitIdentifier = userId || socket.id;
+    const rateLimit = await applyRateLimit(typingRateLimiter, rateLimitIdentifier, 'typing');
+    if (!rateLimit.allowed) {
+      // Silently ignore typing rate limits (don't spam logs)
+      return;
+    }
+
+    logger.log(`⌨️ ${userName} is typing in ${roomId}`);
     socket.to(roomId).emit("user-typing", { roomId, userId, userName });
   });
 
-  socket.on("stop-typing", ({ roomId, userId }) => {
+  socket.on("stop-typing", async ({ roomId, userId }) => {
     if (!roomId) return;
+
+    // Apply rate limiting
+    const rateLimitIdentifier = userId || socket.id;
+    const rateLimit = await applyRateLimit(typingRateLimiter, rateLimitIdentifier, 'stop-typing');
+    if (!rateLimit.allowed) {
+      // Silently ignore typing rate limits
+      return;
+    }
+
     socket.to(roomId).emit("user-stop-typing", { roomId, userId });
   });
 
   // Message updated (edit)
-  socket.on("message-updated", ({ messageId, content, roomId }) => {
+  socket.on("message-updated", async ({ messageId, content, roomId }) => {
     if (!messageId || !roomId) return;
-    console.log(`✏️ Message ${messageId} updated in room ${roomId}`);
+
+    // Apply rate limiting
+    const rateLimitIdentifier = socket.userId || socket.id;
+    const rateLimit = await applyRateLimit(messageUpdateRateLimiter, rateLimitIdentifier, 'message-updated');
+    if (!rateLimit.allowed) {
+      logger.warn(`🚫 Rate limit exceeded for message-updated by ${rateLimitIdentifier}`);
+      return;
+    }
+
+    logger.log(`✏️ Message ${messageId} updated in room ${roomId}`);
     io.to(roomId).emit("message-updated", {
       messageId,
       content,
@@ -411,9 +623,18 @@ io.on("connection", (socket) => {
   });
 
   // Message deleted
-  socket.on("message-deleted", ({ messageId, roomId }) => {
+  socket.on("message-deleted", async ({ messageId, roomId }) => {
     if (!messageId || !roomId) return;
-    console.log(`🗑️ Message ${messageId} deleted in room ${roomId}`);
+
+    // Apply rate limiting
+    const rateLimitIdentifier = socket.userId || socket.id;
+    const rateLimit = await applyRateLimit(messageUpdateRateLimiter, rateLimitIdentifier, 'message-deleted');
+    if (!rateLimit.allowed) {
+      logger.warn(`🚫 Rate limit exceeded for message-deleted by ${rateLimitIdentifier}`);
+      return;
+    }
+
+    logger.log(`🗑️ Message ${messageId} deleted in room ${roomId}`);
     io.to(roomId).emit("message-deleted", {
       messageId,
       roomId,
@@ -423,7 +644,7 @@ io.on("connection", (socket) => {
   // Reaction added/removed
   socket.on("reaction-updated", ({ messageId, roomId, reactions }) => {
     if (!messageId || !roomId) return;
-    console.log(`😀 Reaction updated for message ${messageId} in room ${roomId}`);
+    logger.log(`😀 Reaction updated for message ${messageId} in room ${roomId}`);
     io.to(roomId).emit("reaction-updated", {
       messageId,
       roomId,
@@ -432,9 +653,18 @@ io.on("connection", (socket) => {
   });
 
   // Message read receipt
-  socket.on("message-read", ({ messageId, userId, roomId }) => {
+  socket.on("message-read", async ({ messageId, userId, roomId }) => {
     if (!messageId || !userId || !roomId) return;
-    console.log(`👁️ Message ${messageId} read by user ${userId} in room ${roomId}`);
+
+    // Apply rate limiting
+    const rateLimitIdentifier = userId || socket.id;
+    const rateLimit = await applyRateLimit(readReceiptRateLimiter, rateLimitIdentifier, 'message-read');
+    if (!rateLimit.allowed) {
+      // Silently ignore read receipt rate limits (don't spam logs)
+      return;
+    }
+
+    logger.log(`👁️ Message ${messageId} read by user ${userId} in room ${roomId}`);
     // Broadcast to all users in the room (so sender sees the read receipt)
     io.to(roomId).emit("message-read-update", {
       messageId,
@@ -445,9 +675,18 @@ io.on("connection", (socket) => {
   });
 
   // Message delivered receipt
-  socket.on("message-delivered", ({ messageId, roomId }) => {
+  socket.on("message-delivered", async ({ messageId, roomId }) => {
     if (!messageId || !roomId) return;
-    console.log(`📬 Message ${messageId} delivered in room ${roomId}`);
+
+    // Apply rate limiting
+    const rateLimitIdentifier = socket.userId || socket.id;
+    const rateLimit = await applyRateLimit(readReceiptRateLimiter, rateLimitIdentifier, 'message-delivered');
+    if (!rateLimit.allowed) {
+      // Silently ignore delivery receipt rate limits
+      return;
+    }
+
+    logger.log(`📬 Message ${messageId} delivered in room ${roomId}`);
     // Broadcast to all users in the room (so sender sees the delivery status)
     io.to(roomId).emit("message-delivered-update", {
       messageId,
@@ -457,10 +696,10 @@ io.on("connection", (socket) => {
 
   // Disconnect
   socket.on("disconnect", (reason) => {
-    console.log(`❌ Disconnected: ${socket.id} (${reason})`);
+    logger.log(`❌ Disconnected: ${socket.id} (${reason})`);
     removeOnlineUser(socket.id);
     socketLastRequest.delete(socket.id); // Clean up debounce tracking
-    
+
     // Log socket disconnect
     writeLog({
       stage: 'SOCKET_DISCONNECT',
@@ -474,15 +713,29 @@ io.on("connection", (socket) => {
   });
 });
 
-// Start server
-httpServer.listen(PORT, () => {
-  console.log(`
+// Start server with Redis adapter initialization
+async function startServer() {
+  // Initialize Redis adapter (if configured)
+  await initializeRedisAdapter();
+
+  // Start HTTP server
+  httpServer.listen(PORT, () => {
+    logger.log(`
 ╔════════════════════════════════════════╗
 ║  🚀 ChatFlow Socket Server             ║
 ║  Running on http://localhost:${PORT}      ║
-║  CORS: ${CORS_ORIGIN}
+║  CORS Origins: ${CORS_ORIGINS.join(', ')}
+║  Environment: ${NODE_ENV}
+║  Redis Adapter: ${redisAdapterInitialized ? '✅ Enabled' : '❌ Disabled (in-memory)'}
 ╚════════════════════════════════════════╝
-  `);
+    `);
+  });
+}
+
+// Start the server
+startServer().catch((error) => {
+  logger.error("❌ Failed to start server:", error);
+  process.exit(1);
 });
 
 // Graceful shutdown

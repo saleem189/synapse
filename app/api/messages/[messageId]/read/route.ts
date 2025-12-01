@@ -44,7 +44,13 @@ export async function POST(
 
     await messageService.markAsRead(messageId, session.user.id);
     return NextResponse.json({ message: "Message marked as read" });
-  } catch (error) {
+  } catch (error: any) {
+    // Handle Prisma unique constraint errors gracefully
+    // This can happen due to race conditions when multiple requests try to mark the same message as read
+    if (error?.code === 'P2002' || error?.meta?.target?.includes('messageId')) {
+      // Message is already marked as read - this is not an error
+      return NextResponse.json({ message: "Message already marked as read" }, { status: 200 });
+    }
     return handleError(error);
   }
 }

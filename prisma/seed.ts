@@ -1,13 +1,13 @@
-// ================================
-// Database Seeder
-// ================================
-// Run with: npm run db:seed
-
+// prisma/seed.ts
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { config as envConfig } from "dotenv";
+
+envConfig(); // Load env variables
 
 const prisma = new PrismaClient();
 
+// ------------------ USERS & ROOMS ------------------
 const users = [
   { name: "Admin User", email: "admin@example.com", password: "Password123", role: "admin" },
   { name: "John Doe", email: "john@example.com", password: "Password123", role: "user" },
@@ -16,16 +16,14 @@ const users = [
   { name: "Alice Johnson", email: "alice@example.com", password: "Password123", role: "user" },
 ];
 
-async function main() {
-  console.log("🌱 Seeding database...\n");
+async function seedUsersAndRooms() {
+  console.log("🌱 Seeding users and chat room...");
 
-  // Clear existing data
   await prisma.message.deleteMany();
   await prisma.roomParticipant.deleteMany();
   await prisma.chatRoom.deleteMany();
   await prisma.user.deleteMany();
 
-  // Create users
   const createdUsers = [];
   for (const u of users) {
     const user = await prisma.user.create({
@@ -41,7 +39,6 @@ async function main() {
     console.log(`✅ Created: ${user.email} (${u.role})`);
   }
 
-  // Create group chat
   const group = await prisma.chatRoom.create({
     data: {
       name: "General Chat",
@@ -57,7 +54,6 @@ async function main() {
   });
   console.log(`✅ Created room: ${group.name}`);
 
-  // Add messages
   await prisma.message.createMany({
     data: [
       { content: "Welcome everyone! 👋", senderId: createdUsers[0].id, roomId: group.id },
@@ -66,13 +62,40 @@ async function main() {
     ],
   });
 
-  console.log("\n" + "═".repeat(45));
-  console.log("🎉 Done! Login with any email below:");
-  console.log("   Password for all: Password123");
-  console.log("─".repeat(45));
-  console.log("   👑 ADMIN: admin@example.com");
-  users.filter(u => u.role === "user").forEach((u) => console.log(`   👤 USER:  ${u.email}`));
-  console.log("═".repeat(45));
+  return createdUsers;
+}
+
+// ------------------ CONFIG ------------------
+async function seedConfig() {
+  console.log("🌱 Seeding configs from environment variables...");
+
+  const configs = [
+    { key: "push.vapid.publicKey", value: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY },
+    { key: "push.vapid.privateKey", value: process.env.VAPID_PRIVATE_KEY },
+    { key: "email.from", value: process.env.EMAIL_FROM },
+    { key: "app.name", value: process.env.NEXT_PUBLIC_APP_NAME },
+  ];
+
+  for (const c of configs) {
+    if (!c.value) continue;
+
+    await prisma.config.upsert({
+      where: { key: c.key },
+      update: { value: c.value, updatedAt: new Date() },
+      create: { key: c.key, value: c.value },
+    });
+
+    console.log(`✅ Config set: ${c.key}`);
+  }
+}
+
+// ------------------ MAIN ------------------
+async function main() {
+  const createdUsers = await seedUsersAndRooms();
+  await seedConfig();
+
+  console.log("\n🎉 Seeding complete! Users and configs are ready.");
+  console.log("Admin login:", createdUsers.find(u => u.role === "admin")?.email);
 }
 
 main()

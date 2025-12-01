@@ -28,12 +28,22 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn, getInitials, formatChatListTime } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { CreateRoomModal } from "./create-room-modal";
-import { SettingsModal } from "./settings-modal";
+// Code split modals for better initial load performance
+import dynamic from "next/dynamic";
+
+const CreateRoomModal = dynamic(
+  () => import("./create-room-modal").then((mod) => ({ default: mod.CreateRoomModal })),
+  { ssr: false }
+);
+
+const SettingsModal = dynamic(
+  () => import("./settings-modal").then((mod) => ({ default: mod.SettingsModal })),
+  { ssr: false }
+);
 import { useSocket } from "@/hooks/use-socket";
-import { useApi } from "@/hooks/use-api";
+import { useQueryApi } from "@/hooks/use-react-query";
 import { useOnlineUsers } from "@/hooks";
-import { useRoomsStore, useUserStore } from "@/lib/store";
+import { useRoomsStore, useUserStore, useUIStore } from "@/lib/store";
 
 interface ChatRoomItem {
   id: string;
@@ -54,26 +64,46 @@ interface ChatRoomItem {
 }
 
 export function ChatSidebar() {
-  // Get user from store
+  // Get user from store (no shallow needed for primitive/null)
   const user = useUserStore((state) => state.user);
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Use UI store for modals and sidebar
+  const {
+    isCreateRoomModalOpen,
+    isSettingsModalOpen,
+    isSidebarOpen,
+    openCreateRoomModal,
+    closeCreateRoomModal,
+    openSettingsModal,
+    closeSettingsModal,
+    openSidebar,
+    closeSidebar,
+  } = useUIStore();
 
   // Use centralized hooks
   const { socket, isConnected } = useSocket({ emitUserConnect: true });
   const { onlineUserIds } = useOnlineUsers({ autoConnect: false }); // Use existing socket
-  const { data: roomsData, loading: isLoading, execute: fetchRooms } = useApi<{ rooms: ChatRoomItem[] }>("/rooms", {
-    immediate: true,
+  // Use React Query for rooms data with automatic caching and refetching
+  const { data: roomsData, loading: isLoading, refetch: fetchRooms } = useQueryApi<{ rooms: ChatRoomItem[] }>("/rooms", {
     showErrorToast: false, // Don't show toast on initial load - handle errors silently
+    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
+    refetchInterval: 60 * 1000, // Refetch every minute in background
   });
 
   // Use rooms store
   const { rooms, setRooms, updateRoomLastMessage, incrementUnreadCount, clearUnreadCount } = useRoomsStore();
   const onlineUsers = onlineUserIds;
+
+  // Use ref for rooms to avoid effect re-running on every change
+  const roomsRef = React.useRef(rooms);
+
+  // Update ref when rooms change
+  useEffect(() => {
+    roomsRef.current = rooms;
+  }, [rooms]);
 
   // Update rooms store when API data changes
   useEffect(() => {
@@ -89,11 +119,11 @@ export function ChatSidebar() {
     if (!socket || !user) return;
 
     // MAIN: Listen for ALL messages to update sidebar
-    socket.on("receive-message", (message) => {
+    const handleReceiveMessage = (message: any) => {
       console.log("📩 SIDEBAR: Received message!", message);
 
-      // Check if room exists in store
-      const roomExists = rooms.some((r) => r.id === message.roomId);
+      // Check if room exists in store (use ref)
+      const roomExists = roomsRef.current.some((r) => r.id === message.roomId);
 
       if (!roomExists) {
         // Room not in list - refetch
@@ -130,7 +160,9 @@ export function ChatSidebar() {
       }
 
       console.log("✅ SIDEBAR: Updated rooms list");
-    });
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
 
     // Request notification permission
     if (Notification.permission === "default") {
@@ -138,9 +170,9 @@ export function ChatSidebar() {
     }
 
     return () => {
-      socket.off("receive-message");
+      socket.off("receive-message", handleReceiveMessage);
     };
-  }, [socket, pathname, user, rooms, updateRoomLastMessage, incrementUnreadCount, fetchRooms]);
+  }, [socket, pathname, user, updateRoomLastMessage, incrementUnreadCount, fetchRooms]);
 
   // Clear unread when entering a room
   useEffect(() => {
@@ -166,7 +198,7 @@ export function ChatSidebar() {
   const handleRoomCreated = (newRoom: ChatRoomItem) => {
     const { addRoom } = useRoomsStore.getState();
     addRoom(newRoom as any); // Type assertion for compatibility
-    setShowCreateModal(false);
+    closeCreateRoomModal();
   };
 
   // Get display name for room (for DMs show other user's name)
@@ -194,7 +226,7 @@ export function ChatSidebar() {
     <>
       {/* Mobile Menu Button */}
       <button
-        onClick={() => setIsMobileOpen(true)}
+        onClick={openSidebar}
         className="fixed top-4 left-4 z-50 lg:hidden w-10 h-10 rounded-xl bg-white dark:bg-surface-800 shadow-lg flex items-center justify-center"
       >
         <Menu className="w-5 h-5 text-surface-600 dark:text-surface-400" />
@@ -206,10 +238,10 @@ export function ChatSidebar() {
       </button>
 
       {/* Mobile Overlay */}
-      {isMobileOpen && (
+      {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setIsMobileOpen(false)}
+          onClick={closeSidebar}
         />
       )}
 
@@ -218,7 +250,7 @@ export function ChatSidebar() {
         className={cn(
           "w-80 h-full flex flex-col bg-white dark:bg-surface-900 border-r border-surface-200 dark:border-surface-800",
           "fixed lg:relative z-50 lg:z-auto transition-transform duration-300",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Header */}
@@ -235,7 +267,7 @@ export function ChatSidebar() {
             </div>
 
             <button
-              onClick={() => setIsMobileOpen(false)}
+              onClick={closeSidebar}
               className="lg:hidden w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center"
             >
               <X className="w-5 h-5 text-surface-600 dark:text-surface-400" />
@@ -277,7 +309,7 @@ export function ChatSidebar() {
         {/* New Chat Button */}
         <div className="p-3">
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={openCreateRoomModal}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors"
           >
             <Plus className="w-5 h-5" />
@@ -321,7 +353,7 @@ export function ChatSidebar() {
                   <Link
                     key={room.id}
                     href={`/chat/${room.id}`}
-                    onClick={() => setIsMobileOpen(false)}
+                    onClick={closeSidebar}
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-xl transition-all duration-200",
                       isActive
@@ -428,7 +460,7 @@ export function ChatSidebar() {
               <ThemeToggle className="w-9 h-9" />
 
               <button
-                onClick={() => setShowSettingsModal(true)}
+                onClick={openSettingsModal}
                 className="w-9 h-9 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center text-surface-500"
                 title="Settings"
               >
@@ -449,16 +481,16 @@ export function ChatSidebar() {
 
       {/* Create Room Modal */}
       <CreateRoomModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        isOpen={isCreateRoomModalOpen}
+        onClose={closeCreateRoomModal}
         onRoomCreated={handleRoomCreated}
         currentUserId={user.id}
       />
 
       {/* Settings Modal */}
       <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
+        isOpen={isSettingsModalOpen}
+        onClose={closeSettingsModal}
       />
     </>
   );

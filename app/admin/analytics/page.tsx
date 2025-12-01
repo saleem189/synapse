@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   TrendingUp,
   TrendingDown,
@@ -12,10 +13,18 @@ import {
   MessageSquare,
   Activity,
 } from "lucide-react";
-import { MessageActivityChart } from "@/components/admin/message-activity-chart";
 import { useOnlineUsers } from "@/hooks/use-online-users";
 import { useSocket } from "@/hooks/use-socket";
-import { useApi } from "@/hooks/use-api";
+import { useQueryApi } from "@/hooks/use-react-query";
+
+// Code split heavy chart component
+const MessageActivityChart = dynamic(
+  () => import("@/components/admin/message-activity-chart").then((mod) => ({ default: mod.MessageActivityChart })),
+  { 
+    loading: () => <div className="h-64 flex items-center justify-center text-surface-500">Loading chart...</div>,
+    ssr: false
+  }
+);
 
 interface Stats {
   totalUsers: number;
@@ -31,9 +40,10 @@ export default function AnalyticsPage() {
   const { onlineCount } = useOnlineUsers();
   const { socket } = useSocket({ emitUserConnect: true });
   
-  // Fetch initial stats using API hook
-  const { data: statsData } = useApi<Stats>("/admin/stats", {
+  // Fetch initial stats using React Query
+  const { data: statsData } = useQueryApi<Stats>("/admin/stats", {
     showErrorToast: false,
+    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
   });
   
   const stats = statsData || {

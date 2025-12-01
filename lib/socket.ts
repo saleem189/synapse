@@ -24,6 +24,9 @@ export interface ServerToClientEvents {
   "online-users": (userIds: string[]) => void;
   "message-read-update": (data: { messageId: string; userId: string; roomId: string; readAt: string }) => void;
   "message-delivered-update": (data: { messageId: string; roomId: string }) => void;
+  "message-updated": (data: { messageId: string; content: string; updatedAt: string }) => void;
+  "message-deleted": (data: { messageId: string }) => void;
+  "reaction-updated": (data: { messageId: string; reactions: Record<string, Array<{ id: string; name: string; avatar: string | null }>> }) => void;
   error: (message: string) => void;
 }
 
@@ -76,10 +79,15 @@ let socket: TypedSocket | null = null;
 /**
  * Get or create the socket connection
  * Returns a singleton instance of the Socket.io client
+ * @param userId - User ID for authentication (required for server auth)
  */
-export const getSocket = (): TypedSocket => {
+export const getSocket = (userId?: string): TypedSocket => {
   if (!socket) {
     socket = io(SOCKET_URL, {
+      // Authentication token (required by server)
+      auth: {
+        token: userId || '' // Pass userId as auth token
+      },
       // Auto-connect when created
       autoConnect: true,
       // Reconnection settings
@@ -110,6 +118,18 @@ export const getSocket = (): TypedSocket => {
   }
 
   return socket;
+};
+
+/**
+ * Reconnect the socket with a new user ID
+ * Useful when user session changes
+ */
+export const reconnectSocket = (userId: string): void => {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  getSocket(userId);
 };
 
 /**

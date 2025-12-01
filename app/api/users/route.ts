@@ -38,7 +38,10 @@ export async function GET() {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    return NextResponse.json({ users });
+    // Add caching headers - user list doesn't change frequently
+    const response = NextResponse.json({ users });
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    return response;
   } catch (error) {
     return handleError(error);
   }

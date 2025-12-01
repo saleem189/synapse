@@ -255,10 +255,13 @@ export function MessageInput({
         <div className="mb-2 relative">
           {isImage ? (
             <div className="relative inline-block rounded-lg overflow-hidden border border-surface-200 dark:border-surface-700 max-w-xs shadow-sm">
-              <img
+              <Image
                 src={selectedFile.url}
                 alt={selectedFile.fileName}
+                width={256}
+                height={256}
                 className="max-h-64 w-auto object-cover rounded-lg"
+                unoptimized={selectedFile.url.startsWith('/uploads')}
               />
               <button
                 onClick={() => setSelectedFile(null)}

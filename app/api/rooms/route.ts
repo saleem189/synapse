@@ -11,6 +11,7 @@ import { handleError, UnauthorizedError, ValidationError, NotFoundError } from "
 import { getService } from "@/lib/di";
 import { RoomService } from "@/lib/services/room.service";
 import { UserRepository } from "@/lib/repositories/user.repository";
+import { apiRateLimiter, rateLimitMiddleware } from "@/lib/rate-limit";
 
 // Get services from DI container
 const roomService = getService<RoomService>('roomService');
@@ -20,15 +21,34 @@ const userRepo = getService<UserRepository>('userRepository');
  * GET /api/rooms
  * Get all chat rooms for the current user
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return handleError(new UnauthorizedError('You must be logged in'));
     }
 
+    // Rate limiting
+    const rateLimit = rateLimitMiddleware(request, apiRateLimiter, session.user.id);
+    if (!rateLimit.allowed) {
+      return rateLimit.response as NextResponse;
+    }
+
     const rooms = await roomService.getUserRooms(session.user.id);
-    return NextResponse.json({ rooms });
+    const response = NextResponse.json({ rooms });
+    
+    // Add caching headers for better performance
+    // Cache for 30 seconds, allow stale-while-revalidate for 60 seconds
+    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+    
+    // Add rate limit headers
+    if (rateLimit.response) {
+      rateLimit.response.headers.forEach((value, key) => {
+        response.headers.set(key, value);
+      });
+    }
+    
+    return response;
   } catch (error) {
     return handleError(error);
   }
@@ -43,6 +63,12 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return handleError(new UnauthorizedError('You must be logged in'));
+    }
+
+    // Rate limiting
+    const rateLimit = rateLimitMiddleware(request, apiRateLimiter, session.user.id);
+    if (!rateLimit.allowed) {
+      return rateLimit.response as NextResponse;
     }
 
     // Verify user exists
@@ -99,19 +125,30 @@ export async function POST(request: NextRequest) {
       description
     );
 
-    return NextResponse.json({
-      room: {
-        id: room.id,
-        name: room.name,
-        isGroup: true,
-        participants: room.participants.map((p) => ({
-          id: p.user.id,
-          name: p.user.name,
-          avatar: p.user.avatar,
-          status: p.user.status || 'offline',
-        })),
-      },
-    }, { status: 201 });
+      const response = NextResponse.json({
+        room: {
+          id: room.id,
+          name: room.name,
+          isGroup: true,
+          participants: room.participants.map((p) => ({
+            id: p.user.id,
+            name: p.user.name,
+            avatar: p.user.avatar,
+            status: p.user.status || 'offline',
+          })),
+        },
+      }, { status: 201 });
+      
+      // Add rate limit headers
+      if (rateLimit.response) {
+        rateLimit.response.headers.forEach((value, key) => {
+          if (key.startsWith('X-RateLimit-')) {
+            response.headers.set(key, value);
+          }
+        });
+      }
+      
+      return response;
   } catch (error) {
     return handleError(error);
   }

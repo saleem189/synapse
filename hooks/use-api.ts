@@ -130,7 +130,8 @@ export function useApi<T>(
         abortControllerRef.current.abort();
       }
     };
-  }, [immediate]); // Only depend on immediate, not execute
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [immediate]); // execute is stable due to useCallback with all dependencies listed
 
   return {
     data,

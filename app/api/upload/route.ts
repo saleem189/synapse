@@ -7,6 +7,8 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getService } from "@/lib/di";
+import { QueueService } from "@/lib/queue/queue-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,19 +87,62 @@ export async function POST(request: NextRequest) {
     const fileName = `${timestamp}_${randomString}.${fileExtension}`;
     const filePath = join(uploadsDir, fileName);
 
-    // Convert file to buffer and save
+    // Convert file to buffer and save temporarily
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
-    // Return file URL
-    const fileUrl = `/uploads/${fileName}`;
+    // Determine if file needs processing
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+
+    // Get queue service
+    const queueService = getService<QueueService>("queueService");
+
+    let fileUrl = `/uploads/${fileName}`;
+    let processingJobId: string | null = null;
+
+    // Queue processing for images and videos
+    if (isImage) {
+      // For images, compress and optimize
+      const optimizedFileName = `${timestamp}_${randomString}_optimized.webp`;
+      const optimizedPath = `uploads/${optimizedFileName}`;
+      
+      processingJobId = await queueService.addImageProcessing(
+        fileUrl,
+        optimizedPath,
+        {
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 85,
+          format: "webp",
+        }
+      );
+      
+      // Return original URL immediately, optimized version will be available later
+      fileUrl = `/uploads/${optimizedFileName}`;
+    } else if (isVideo) {
+      // For videos, queue processing (compression requires ffmpeg)
+      const processedFileName = `${timestamp}_${randomString}_processed.${fileExtension}`;
+      const processedPath = `uploads/${processedFileName}`;
+      
+      processingJobId = await queueService.addVideoProcessing(
+        fileUrl,
+        processedPath
+      );
+      
+      // Return original URL for now
+    }
 
     return NextResponse.json({
       url: fileUrl,
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
+      processing: processingJobId ? { jobId: processingJobId, status: "queued" } : undefined,
+      note: isImage || isVideo 
+        ? "File uploaded successfully. Processing in background. Optimized version will be available shortly."
+        : undefined,
     });
   } catch (error) {
     console.error("Error uploading file:", error);

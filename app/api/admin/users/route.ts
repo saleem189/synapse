@@ -30,7 +30,10 @@ export async function GET() {
     }
 
     const users = await adminService.getAllUsers();
-    return NextResponse.json({ users });
+    // Add caching headers - user list can be cached for 60 seconds
+    const response = NextResponse.json({ users });
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=120');
+    return response;
   } catch (error) {
     return handleError(error);
   }

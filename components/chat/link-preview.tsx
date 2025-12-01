@@ -5,6 +5,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { apiClient } from "@/lib/api-client";
 import { ExternalLink, Image as ImageIcon, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -118,14 +119,15 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
     >
       {preview.image && (
         <div className="relative w-full h-48 overflow-hidden bg-surface-100 dark:bg-surface-900">
-          <img
+          <Image
             src={preview.image}
             alt={preview.title || "Preview"}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              // Hide image on error
-              e.currentTarget.style.display = "none";
+            fill
+            className="object-cover"
+            onError={() => {
+              // Image error handled by Next.js Image component
             }}
+            unoptimized // Link preview images from external sources
           />
         </div>
       )}

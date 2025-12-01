@@ -20,12 +20,17 @@ let serverSocket: Socket | null = null;
 function getServerSocket(): Socket {
   if (!serverSocket || !serverSocket.connected) {
     console.log(`🔌 Creating server socket connection to ${SOCKET_URL}...`);
+    // Server-side socket doesn't need user authentication
+    // Use a special token to identify it as an API socket
     serverSocket = io(SOCKET_URL, {
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       transports: ["websocket", "polling"],
+      auth: {
+        token: 'api-server', // Special token for API server socket
+      },
     });
 
     serverSocket.on("connect", () => {

@@ -26,6 +26,21 @@ NEXT_PUBLIC_SOCKET_URL="http://localhost:3001"
 SOCKET_PORT=3001
 
 # ================================
+# Redis Configuration (Optional - for Socket.IO horizontal scaling)
+# ================================
+# Redis URL for Socket.IO adapter (enables multi-server support)
+# Format: redis://[password@]host:port
+# If not set, Socket.IO will use in-memory adapter (single server only)
+REDIS_URL="redis://:redis123@localhost:6379"
+REDIS_PASSWORD=redis123
+REDIS_PORT=6379
+REDIS_HOST=localhost
+
+# Alternative: Redis Cloud or external Redis
+# REDIS_URL="redis://username:password@your-redis-host:6379"
+
+
+# ================================
 # SETUP INSTRUCTIONS
 # ================================
 # 1. Copy this file to .env.local:
@@ -44,3 +59,7 @@ SOCKET_PORT=3001
 # 5. Start the app:
 #    npm run dev:all
 # ================================
+
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BDagaqvePCafs0EmjDl0jG8lAMQaIB_gIdNdLIAUx9E7cfP8ZFBQ9l2tiydnnyxv9DpgYhq9btSCV0_lO2ie4So
+VAPID_PRIVATE_KEY=Qg2JgKdayfY6KEm-hCjkgYc3kNBDPh2Nn6hXcffneT8
+NEXT_PUBLIC_VAPID_SUBJECT=mailto:admin@example.com

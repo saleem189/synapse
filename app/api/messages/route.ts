@@ -12,6 +12,7 @@ import { getService } from "@/lib/di";
 import { MessageService } from "@/lib/services/message.service";
 import { broadcastMessage } from "@/lib/socket-server-client";
 import { logApiReceive, logApiBroadcast, logError } from "@/lib/message-flow-logger";
+import { messageRateLimiter, rateLimitMiddleware } from "@/lib/rate-limit";
 
 // Get services from DI container
 const messageService = getService<MessageService>('messageService');
@@ -44,8 +45,11 @@ export async function GET(request: NextRequest) {
       cursor: cursor || undefined,
     });
 
-    // 4. Return response
-    return NextResponse.json(result);
+    // 4. Return response with caching headers
+    // Messages are dynamic, so cache for shorter duration
+    const response = NextResponse.json(result);
+    response.headers.set('Cache-Control', 'private, s-maxage=10, stale-while-revalidate=30');
+    return response;
   } catch (error) {
     return handleError(error);
   }
@@ -63,15 +67,21 @@ export async function POST(request: NextRequest) {
       return handleError(new UnauthorizedError('You must be logged in'));
     }
 
-    // 2. Parse request body
+    // 2. Rate limiting
+    const rateLimit = rateLimitMiddleware(request, messageRateLimiter, session.user.id);
+    if (!rateLimit.allowed) {
+      return rateLimit.response as NextResponse;
+    }
+
+    // 3. Parse request body
     const body = await request.json();
     const { content, roomId, fileUrl, fileName, fileSize, fileType, type, replyToId } = body;
 
-    // 3. Log API receive
+    // 4. Log API receive
     const tempMessageId = `temp_${Date.now()}`;
     logApiReceive(tempMessageId, roomId, session.user.id, content || '');
 
-    // 4. Delegate to service
+    // 5. Delegate to service
     const message = await messageService.sendMessage(
       session.user.id,
       roomId,
@@ -86,7 +96,7 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // 5. Transform message to match expected format
+    // 6. Transform message to match expected format
     const transformedMessage = {
       id: message.id,
       content: message.content,
@@ -113,7 +123,7 @@ export async function POST(request: NextRequest) {
       roomId: message.roomId,
     };
 
-    // 6. Broadcast message via socket to other users (after saving to DB)
+    // 7. Broadcast message via socket to other users (after saving to DB)
     // This ensures all users receive the message with the real database ID
     broadcastMessage(roomId, {
       id: transformedMessage.id,
@@ -139,7 +149,17 @@ export async function POST(request: NextRequest) {
         console.error("Failed to broadcast message:", error);
       });
 
-    // 7. Return response
+    // 8. Return response with rate limit headers
+    const response = NextResponse.json({ message: transformedMessage }, { status: 201 });
+    
+    // Add rate limit headers
+    if (rateLimit.response) {
+      rateLimit.response.headers.forEach((value, key) => {
+        response.headers.set(key, value);
+      });
+    }
+    
+    return response;
     return NextResponse.json({ message: transformedMessage }, { status: 201 });
   } catch (error) {
     return handleError(error);

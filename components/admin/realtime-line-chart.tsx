@@ -5,7 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useSocket } from "@/hooks/use-socket";
 import {
   LineChart,
   Line,
@@ -18,7 +18,6 @@ import {
   AreaChart,
 } from "recharts";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
 const MAX_DATA_POINTS = 30;
 
 interface DataPoint {
@@ -30,6 +29,7 @@ interface DataPoint {
 export function RealtimeLineChart({ title, unit = "", color = "#3b82f6" }: { title: string; unit?: string; color?: string }) {
   const [data, setData] = useState<DataPoint[]>([]);
   const [currentValue, setCurrentValue] = useState(0);
+  const { socket, isConnected } = useSocket();
 
   useEffect(() => {
     // Initialize with empty data
@@ -44,12 +44,17 @@ export function RealtimeLineChart({ title, unit = "", color = "#3b82f6" }: { tit
     }
     setData(initialData);
 
-    const socket = io(SOCKET_URL);
+    setData(initialData);
+
+    if (!socket || !isConnected) return;
+
     let count = 0;
 
-    socket.on("receive-message", () => {
+    const handleReceiveMessage = () => {
       count++;
-    });
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
 
     // Update every 3 seconds
     const interval = setInterval(() => {
@@ -70,10 +75,10 @@ export function RealtimeLineChart({ title, unit = "", color = "#3b82f6" }: { tit
     }, 3000);
 
     return () => {
-      socket.disconnect();
+      socket.off("receive-message", handleReceiveMessage);
       clearInterval(interval);
     };
-  }, []);
+  }, [socket, isConnected]);
 
   const maxValue = Math.max(...data.map((d) => d.value), 1);
 

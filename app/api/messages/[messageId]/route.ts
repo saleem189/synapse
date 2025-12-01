@@ -55,39 +55,6 @@ export async function PATCH(
     return handleError(error);
   }
 }
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json({
-      message: {
-        id: updatedMessage.id,
-        content: updatedMessage.content,
-        type: updatedMessage.type,
-        isEdited: updatedMessage.isEdited,
-        createdAt: updatedMessage.createdAt.toISOString(),
-        updatedAt: updatedMessage.updatedAt.toISOString(),
-        senderId: updatedMessage.senderId,
-        senderName: updatedMessage.sender.name,
-        senderAvatar: updatedMessage.sender.avatar,
-        roomId: updatedMessage.roomId,
-      },
-    });
-  } catch (error) {
-    console.error("Error editing message:", error);
-    return NextResponse.json(
-      { error: "Failed to edit message" },
-      { status: 500 }
-    );
-  }
-}
 
 /**
  * DELETE /api/messages/[messageId]
@@ -110,38 +77,6 @@ export async function DELETE(
     return NextResponse.json({ message: "Message deleted successfully" });
   } catch (error) {
     return handleError(error);
-  }
-}
-
-    if (!isSender && !isRoomAdmin) {
-      return NextResponse.json(
-        { error: "You can only delete your own messages or be a room admin" },
-        { status: 403 }
-      );
-    }
-
-    // Soft delete (mark as deleted)
-    const deletedMessage = await prisma.message.update({
-      where: { id: messageId },
-      data: {
-        isDeleted: true,
-        content: deleteForEveryone ? "[This message was deleted]" : message.content,
-        updatedAt: new Date(),
-      },
-    });
-
-    return NextResponse.json({
-      message: {
-        id: deletedMessage.id,
-        isDeleted: deletedMessage.isDeleted,
-      },
-    });
-  } catch (error) {
-    console.error("Error deleting message:", error);
-    return NextResponse.json(
-      { error: "Failed to delete message" },
-      { status: 500 }
-    );
   }
 }
 

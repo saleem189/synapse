@@ -7,12 +7,15 @@ import { MessageRepository, MessageWithRelations } from '@/lib/repositories/mess
 import { RoomRepository } from '@/lib/repositories/room.repository';
 import { ValidationError, NotFoundError, ForbiddenError } from '@/lib/errors';
 import { messageSchema } from '@/lib/validations';
-import { pushService } from '@/lib/services/push.service';
+import { PushService } from '@/lib/services/push.service';
+import { QueueService } from '@/lib/queue/queue-service';
 
 export class MessageService {
   constructor(
     private messageRepo: MessageRepository,
-    private roomRepo: RoomRepository
+    private roomRepo: RoomRepository,
+    private queueService: QueueService, // Injected via DI
+    private pushService?: PushService // Optional - injected via DI (fallback only)
   ) { }
 
   /**
@@ -148,15 +151,34 @@ export class MessageService {
       const url = `/chat?roomId=${roomId}`;
       const icon = sender.avatar || '/icon-192x192.png'; // Fallback icon
 
-      // Send to each recipient
+      // Send to each recipient via queue (non-blocking)
+      // This prevents blocking the message send operation
+      if (!this.queueService) {
+        // Fallback if queue service not injected (shouldn't happen in production)
+        console.warn('QueueService not injected, falling back to direct push');
+        const fallbackPushService = this.pushService || (await import('@/lib/services/push.service')).pushService;
+        await Promise.all(recipients.map(async (recipient) => {
+          await fallbackPushService.sendNotification(recipient.userId, {
+            title,
+            body,
+            url,
+            icon,
+          });
+        }));
+        return;
+      }
+      
       await Promise.all(recipients.map(async (recipient) => {
-        // Ideally, check if user is offline before sending
-        // For now, we send to all (Service Worker will handle "focus" check if possible, or just show it)
-        await pushService.sendNotification(recipient.userId, {
+        // Add to queue instead of sending directly
+        // Worker process will handle sending
+        await this.queueService!.addPushNotification(recipient.userId, {
           title,
           body,
           url,
           icon,
+        }).catch((error) => {
+          // Log but don't fail message send if queue fails
+          console.error('Failed to queue push notification:', error);
         });
       }));
     } catch (error) {

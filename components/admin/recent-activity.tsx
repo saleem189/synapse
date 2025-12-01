@@ -5,11 +5,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useSocket } from "@/hooks/use-socket";
 import { getInitials, formatMessageTime } from "@/lib/utils";
 import { UserPlus, MessageSquare, Hash } from "lucide-react";
-
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
 
 interface RecentUser {
   id: string;
@@ -47,10 +45,12 @@ export function RecentActivity({ recentUsers }: RecentActivityProps) {
   }, [recentUsers]);
 
   // Listen for real-time activities
-  useEffect(() => {
-    const socket = io(SOCKET_URL);
+  const { socket, isConnected } = useSocket();
 
-    socket.on("receive-message", (message) => {
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleReceiveMessage = (message: any) => {
       const newActivity: Activity = {
         id: `msg_${Date.now()}`,
         type: "message",
@@ -60,16 +60,19 @@ export function RecentActivity({ recentUsers }: RecentActivityProps) {
       };
 
       setActivities((prev) => [newActivity, ...prev].slice(0, 10));
-    });
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
 
     socket.on("user-online", () => {
       // Could fetch user details here
     });
 
     return () => {
-      socket.disconnect();
+      socket.off("receive-message", handleReceiveMessage);
+      socket.off("user-online");
     };
-  }, []);
+  }, [socket, isConnected]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {

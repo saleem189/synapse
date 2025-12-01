@@ -57,52 +57,58 @@ export function useSocket(
       return;
     }
 
-    const newSocket = getSocket();
-    setSocket(newSocket);
+    try {
+      // Get user session BEFORE creating socket connection
+      const sessionRes = await fetch("/api/auth/session");
+      const session = await sessionRes.json();
 
-    // Set up connection handlers
-    const handleConnect = async () => {
-      setIsConnected(true);
-      
-      // Emit user-connect if enabled and not already emitted
-      if (emitUserConnect && !hasEmittedUserConnect.current) {
-        try {
-          const sessionRes = await fetch("/api/auth/session");
-          const session = await sessionRes.json();
-          if (session?.user?.id) {
-            newSocket.emit("user-connect", session.user.id);
-            hasEmittedUserConnect.current = true;
-          }
-        } catch (error) {
-          console.error("Failed to get session for user-connect:", error);
-        }
+      if (!session?.user?.id) {
+        console.warn('⚠️ No user session found, cannot connect socket');
+        setIsConnected(false);
+        return;
       }
-    };
 
-    const handleDisconnect = () => {
+      // Create socket with userId for authentication
+      const newSocket = getSocket(session.user.id);
+      setSocket(newSocket);
+
+      // Set up connection handlers
+      const handleConnect = () => {
+        setIsConnected(true);
+        // Log removed to prevent duplicates (lib/socket.ts already logs connection)
+
+        // Mark that we've connected (no need to emit user-connect anymore)
+        hasEmittedUserConnect.current = true;
+      };
+
+      const handleDisconnect = () => {
+        setIsConnected(false);
+      };
+
+      const handleConnectError = (error: Error) => {
+        console.error("Socket connection error:", error);
+        setIsConnected(false);
+      };
+
+      // Register event listeners
+      newSocket.on("connect", handleConnect);
+      newSocket.on("disconnect", handleDisconnect);
+      newSocket.on("connect_error", handleConnectError);
+
+      // Store cleanup function
+      cleanupRef.current = () => {
+        newSocket.off("connect", handleConnect);
+        newSocket.off("disconnect", handleDisconnect);
+        newSocket.off("connect_error", handleConnectError);
+      };
+
+      // If already connected, trigger connect handler
+      if (newSocket.connected) {
+        handleConnect();
+      }
+    } catch (error) {
+      console.error("Failed to get session for socket connection:", error);
       setIsConnected(false);
-    };
-
-    const handleConnectError = (error: Error) => {
-      console.error("Socket connection error:", error);
-      setIsConnected(false);
-    };
-
-    // Register event listeners
-    newSocket.on("connect", handleConnect);
-    newSocket.on("disconnect", handleDisconnect);
-    newSocket.on("connect_error", handleConnectError);
-
-    // Store cleanup function
-    cleanupRef.current = () => {
-      newSocket.off("connect", handleConnect);
-      newSocket.off("disconnect", handleDisconnect);
-      newSocket.off("connect_error", handleConnectError);
-    };
-
-    // If already connected, trigger connect handler
-    if (newSocket.connected) {
-      handleConnect();
     }
   }, [socket, emitUserConnect]);
 
@@ -114,7 +120,7 @@ export function useSocket(
       cleanupRef.current();
       cleanupRef.current = null;
     }
-    
+
     if (socket) {
       socket.disconnect();
       setIsConnected(false);
@@ -155,4 +161,3 @@ export function useSocket(
     reconnect,
   };
 }
-

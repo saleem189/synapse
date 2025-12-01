@@ -4,12 +4,28 @@
 // Overview with real-time stats and graphs
 
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import prisma from "@/lib/prisma";
 import { AdminStats } from "@/components/admin/admin-stats";
-import { RealtimeLineChart } from "@/components/admin/realtime-line-chart";
-import { UserActivityLineChart } from "@/components/admin/user-activity-line-chart";
 import { RecentActivity } from "@/components/admin/recent-activity";
 import { OnlineUsers } from "@/components/admin/online-users";
+
+// Code split heavy chart components for better performance
+const RealtimeLineChart = dynamic(
+  () => import("@/components/admin/realtime-line-chart").then((mod) => ({ default: mod.RealtimeLineChart })),
+  { 
+    loading: () => <div className="h-64 flex items-center justify-center text-surface-500">Loading chart...</div>,
+    ssr: false // Charts don't need SSR
+  }
+);
+
+const UserActivityLineChart = dynamic(
+  () => import("@/components/admin/user-activity-line-chart").then((mod) => ({ default: mod.UserActivityLineChart })),
+  { 
+    loading: () => <div className="h-64 flex items-center justify-center text-surface-500">Loading chart...</div>,
+    ssr: false
+  }
+);
 
 async function getStats() {
   const [totalUsers, totalRooms, totalMessages, recentUsers] = await Promise.all([

@@ -6,6 +6,8 @@
 import { UserRepository } from '@/lib/repositories/user.repository';
 import { ValidationError, NotFoundError, ForbiddenError } from '@/lib/errors';
 import bcrypt from 'bcryptjs';
+import { getService } from '@/lib/di';
+import { EventBus } from '@/lib/events/event-bus';
 
 export class UserService {
   constructor(private userRepo: UserRepository) {}
@@ -39,6 +41,21 @@ export class UserService {
       password: hashedPassword,
       status: 'offline',
     });
+
+    // Publish user registered event (non-blocking)
+    // Email service will handle sending welcome email
+    try {
+      const eventBus = getService<EventBus>('eventBus');
+      await eventBus.publish('user.registered', {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      // Don't fail registration if event publishing fails
+      console.error('Failed to publish user.registered event:', error);
+    }
 
     return {
       id: user.id,

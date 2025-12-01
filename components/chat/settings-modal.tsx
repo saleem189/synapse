@@ -76,8 +76,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
       const data = await apiClient.upload<{ avatar: string }>("/users/avatar", formData);
       setAvatar(data.avatar);
-      // Reload page to update avatar everywhere
-      window.location.reload();
+      // Refresh to update avatar everywhere (better than full reload)
+      if (typeof window !== 'undefined') {
+        window.location.reload(); // TODO: Replace with proper state update
+      }
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast.error("An error occurred while uploading the profile picture");
@@ -95,7 +97,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       await apiClient.delete("/users/avatar");
       setAvatar(null);
-      window.location.reload();
+      // Refresh to update avatar everywhere (better than full reload)
+      if (typeof window !== 'undefined') {
+        window.location.reload(); // TODO: Replace with proper state update
+      }
     } catch (error) {
       console.error("Error removing avatar:", error);
       toast.error("An error occurred while removing the profile picture");

@@ -6,9 +6,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useSocket } from "@/hooks/use-socket";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
 const MAX_DATA_POINTS = 30;
 
 interface ActivityPoint {
@@ -20,9 +19,10 @@ interface ActivityPoint {
 export function UserActivityChart() {
   const [dataPoints, setDataPoints] = useState<ActivityPoint[]>([]);
   const [currentOnline, setCurrentOnline] = useState(0);
+  const { socket, isConnected } = useSocket();
 
   useEffect(() => {
-    const socket = io(SOCKET_URL);
+    if (!socket || !isConnected) return;
 
     socket.on("connect", () => {
       socket.emit("get-online-users");
@@ -68,10 +68,13 @@ export function UserActivityChart() {
     }, 2000);
 
     return () => {
-      socket.disconnect();
+      socket.off("connect");
+      socket.off("online-users");
+      socket.off("user-online");
+      socket.off("user-offline");
       clearInterval(interval);
     };
-  }, [currentOnline]);
+  }, [socket, isConnected, currentOnline]);
 
   const maxValue = Math.max(...dataPoints.map((d) => d.online), 1);
 
@@ -102,13 +105,12 @@ export function UserActivityChart() {
               className="flex-1 flex flex-col items-center justify-end"
             >
               <div
-                className={`w-full rounded-t transition-all duration-300 ${
-                  isLast
+                className={`w-full rounded-t transition-all duration-300 ${isLast
                     ? "bg-green-500"
                     : point.online > 0
-                    ? "bg-green-400/70"
-                    : "bg-surface-200 dark:bg-surface-700"
-                }`}
+                      ? "bg-green-400/70"
+                      : "bg-surface-200 dark:bg-surface-700"
+                  }`}
                 style={{ height: `${Math.max(height, 2)}%` }}
                 title={`${point.time}: ${point.online} online`}
               />

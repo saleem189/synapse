@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { getInitials } from "@/lib/utils";
 import { Circle } from "lucide-react";
 import { useOnlineUsers } from "@/hooks/use-online-users";
-import { useApi } from "@/hooks/use-api";
+import { useQueryApi } from "@/hooks/use-react-query";
 
 interface OnlineUser {
   id: string;
@@ -22,9 +22,10 @@ export function OnlineUsers() {
   // Use centralized online users hook
   const { onlineUserIdsArray } = useOnlineUsers();
   
-  // Use API hook to fetch users
-  const { data: usersData, loading } = useApi<{ users: OnlineUser[] }>("/admin/users", {
+  // Use React Query to fetch users with automatic caching
+  const { data: usersData, loading } = useQueryApi<{ users: OnlineUser[] }>("/admin/users", {
     showErrorToast: false, // Don't show toast on initial load
+    staleTime: 10 * 1000, // Consider data fresh for 10 seconds
   });
 
   const users = usersData?.users || [];

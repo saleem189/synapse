@@ -9,6 +9,7 @@ export { useSocket } from './use-socket';
 export type { UseSocketOptions, UseSocketReturn } from './use-socket';
 
 export { useApi, useApiPost, useApiPatch, useApiDelete } from './use-api';
+export { useQueryApi, useMutationApi, useOptimisticMutation } from './use-react-query';
 export type { UseApiOptions, UseApiReturn } from './use-api';
 
 export { useTyping } from './use-typing';

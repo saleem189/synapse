@@ -6,9 +6,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { io } from "socket.io-client";
+import { useSocket } from "@/hooks/use-socket";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
 const MAX_DATA_POINTS = 20;
 
 interface DataPoint {
@@ -20,9 +19,10 @@ export function RealtimeChart() {
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [messagesPerMinute, setMessagesPerMinute] = useState(0);
   const countRef = useRef(0);
+  const { socket, isConnected } = useSocket();
 
   useEffect(() => {
-    const socket = io(SOCKET_URL);
+    if (!socket || !isConnected) return;
 
     // Initialize with empty data
     const initialData: DataPoint[] = [];
@@ -36,9 +36,11 @@ export function RealtimeChart() {
     setDataPoints(initialData);
 
     // Listen for messages
-    socket.on("receive-message", () => {
+    const handleReceiveMessage = () => {
       countRef.current += 1;
-    });
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
 
     // Update chart every 3 seconds
     const interval = setInterval(() => {
@@ -58,10 +60,10 @@ export function RealtimeChart() {
     }, 3000);
 
     return () => {
-      socket.disconnect();
+      socket.off("receive-message", handleReceiveMessage);
       clearInterval(interval);
     };
-  }, []);
+  }, [socket, isConnected]);
 
   // Calculate max for scaling
   const maxCount = Math.max(...dataPoints.map((d) => d.count), 1);
@@ -94,13 +96,12 @@ export function RealtimeChart() {
               className="flex-1 flex flex-col items-center gap-1"
             >
               <div
-                className={`w-full rounded-t transition-all duration-300 ${
-                  isLast
-                    ? "bg-primary-500"
-                    : point.count > 0
+                className={`w-full rounded-t transition-all duration-300 ${isLast
+                  ? "bg-primary-500"
+                  : point.count > 0
                     ? "bg-primary-400/60"
                     : "bg-surface-200 dark:bg-surface-700"
-                }`}
+                  }`}
                 style={{ height: `${Math.max(height, 4)}%` }}
               />
             </div>

@@ -26,11 +26,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  messages   Message[]
-  rooms      RoomParticipant[]
-  ownedRooms ChatRoom[]        @relation("RoomOwner")
-  reactions  MessageReaction[]
-  readMessages MessageRead[]
+  messages          Message[]
+  rooms             RoomParticipant[]
+  ownedRooms        ChatRoom[]         @relation("RoomOwner")
+  reactions         MessageReaction[]
+  readMessages      MessageRead[]
   pushSubscriptions PushSubscription[]
 
   @@map("users")
@@ -79,28 +79,28 @@ model RoomParticipant {
 // Message Model
 // ================================
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  type      String   @default("text") // text, image, video, file, audio
-  fileUrl   String?  // URL or path to uploaded file
-  fileName  String?  // Original file name
-  fileSize  Int?     // File size in bytes
-  fileType  String?  // MIME type (e.g., "image/png", "application/pdf")
+  id       String  @id @default(cuid())
+  content  String
+  type     String  @default("text") // text, image, video, file, audio
+  fileUrl  String? // URL or path to uploaded file
+  fileName String? // Original file name
+  fileSize Int? // File size in bytes
+  fileType String? // MIME type (e.g., "image/png", "application/pdf")
 
-  senderId  String
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
-  roomId    String
-  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId String
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
-  isEdited  Boolean  @default(false)
-  isDeleted Boolean  @default(false)
+  isEdited  Boolean @default(false)
+  isDeleted Boolean @default(false)
 
-  replyToId String?  // ID of message being replied to
-  replyTo   Message? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replyToId String? // ID of message being replied to
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Message[] @relation("MessageReplies")
 
-  reactions MessageReaction[]
+  reactions    MessageReaction[]
   readReceipts MessageRead[]
 
   createdAt DateTime @default(now())
@@ -117,7 +117,7 @@ model Message {
 // ================================
 model MessageReaction {
   id        String   @id @default(cuid())
-  emoji     String   // Emoji character (👍, ❤️, 😂, etc.)
+  emoji     String // Emoji character (👍, ❤️, 😂, etc.)
   createdAt DateTime @default(now())
 
   messageId String
@@ -135,8 +135,8 @@ model MessageReaction {
 // Message Read Receipt Model
 // ================================
 model MessageRead {
-  id        String   @id @default(cuid())
-  readAt    DateTime @default(now())
+  id     String   @id @default(cuid())
+  readAt DateTime @default(now())
 
   messageId String
   message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
@@ -163,4 +163,17 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// ================================
+// Config Model (for runtime configuration)
+// ================================
+model Config {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("configs")
 }

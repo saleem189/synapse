@@ -203,21 +203,37 @@ export class MessageRepository extends BaseRepository<
 
   /**
    * Mark message as read for a user
+   * Handles race conditions where multiple requests try to mark the same message as read
    */
   async markAsRead(messageId: string, userId: string): Promise<void> {
-    await this.prisma.messageRead.upsert({
-      where: {
-        messageId_userId: {
+    try {
+      await this.prisma.messageRead.upsert({
+        where: {
+          messageId_userId: {
+            messageId,
+            userId,
+          },
+        },
+        create: {
           messageId,
           userId,
         },
-      },
-      create: {
-        messageId,
-        userId,
-      },
-      update: {},
-    });
+        update: {
+          // Update readAt timestamp if record already exists
+          readAt: new Date(),
+        },
+      });
+    } catch (error: any) {
+      // Handle race condition: if record already exists (P2002), that's fine
+      // The message is already marked as read
+      if (error?.code === 'P2002') {
+        // Record already exists, which means message is already marked as read
+        // This is not an error - just return successfully
+        return;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   /**

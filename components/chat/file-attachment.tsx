@@ -107,12 +107,12 @@ export function FileAttachment({
                 <p className="text-xs text-surface-500 dark:text-surface-400">Loading image...</p>
               </div>
             )}
-            <img
+            <Image
               ref={imgRef}
               src={fileUrl}
               alt={fileName}
-              loading="lazy"
-              decoding="async"
+              width={400}
+              height={300}
               className={cn(
                 "rounded-lg cursor-pointer",
                 "max-h-[300px] max-w-full object-contain"
@@ -133,7 +133,6 @@ export function FileAttachment({
                 const img = e.currentTarget;
                 // Check if image is actually loaded
                 if (img.complete && (img.naturalWidth > 0 || img.naturalHeight > 0)) {
-                  console.log("Image loaded successfully:", fileUrl, "Dimensions:", img.naturalWidth, "x", img.naturalHeight);
                   setImageLoaded(true);
                   setImageError(false);
                 } else {
@@ -146,16 +145,16 @@ export function FileAttachment({
                   }, 100);
                 }
               }}
-              onError={(e) => {
-                console.error("Image load error - URL:", fileUrl, "Error:", e);
+              onError={() => {
                 setImageError(true);
                 setImageLoaded(false);
               }}
+              unoptimized={fileUrl.startsWith('/uploads')} // Unoptimize local uploads
             />
             {imageError && (
               <div className="absolute inset-0 w-full h-[300px] bg-surface-100 dark:bg-surface-800 flex items-center justify-center rounded-lg z-20">
                 <div className="text-center">
-                  <Image className="w-8 h-8 text-surface-400 mx-auto mb-2" />
+                  <ImageIcon className="w-8 h-8 text-surface-400 mx-auto mb-2" />
                   <p className="text-xs text-surface-500">Failed to load image</p>
                   <p className="text-xs text-surface-400 mt-1 break-all px-2">{fileUrl}</p>
                 </div>
