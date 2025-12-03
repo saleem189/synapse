@@ -32,10 +32,20 @@ export function createMessageFromPayload(
     senderAvatar: payload.replyTo.senderAvatar || null,
   } : null;
 
+  // Normalize message type to uppercase enum value
+  const normalizeMessageType = (type?: string): MessageType => {
+    if (!type) return 'TEXT';
+    const upper = type.toUpperCase();
+    if (['TEXT', 'IMAGE', 'VIDEO', 'FILE', 'AUDIO'].includes(upper)) {
+      return upper as MessageType;
+    }
+    return 'TEXT'; // Default fallback
+  };
+
   return {
     id: payload.id || crypto.randomUUID(),
     content: payload.content,
-    type: (payload.type || "text") as MessageType,
+    type: normalizeMessageType(payload.type),
     fileUrl: payload.fileUrl || null,
     fileName: payload.fileName || null,
     fileSize: payload.fileSize || null,
@@ -73,15 +83,16 @@ export function createOptimisticMessage(
   replyTo?: ReplyTo | null,
   recipientOnline: boolean = false
 ): Message {
+  // Determine message type and normalize to uppercase enum value
   const messageType: MessageType = fileData
     ? fileData.fileType.startsWith("image/")
-      ? "image"
+      ? "IMAGE"
       : fileData.fileType.startsWith("video/")
-      ? "video"
+      ? "VIDEO"
       : fileData.fileType.startsWith("audio/")
-      ? "audio"
-      : "file"
-    : "text";
+      ? "AUDIO"
+      : "FILE"
+    : "TEXT";
 
   return {
     id: `temp_${Date.now()}`,

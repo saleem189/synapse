@@ -12,19 +12,41 @@ datasource db {
 }
 
 // ================================
+// Enums
+// ================================
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ONLINE
+  OFFLINE
+  AWAY
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  AUDIO
+}
+
+// ================================
 // User Model
 // ================================
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
+  id        String     @id @default(cuid())
+  name      String     @db.VarChar(50)
+  email     String     @unique @db.VarChar(255)
   password  String
   avatar    String?
-  role      String   @default("user") // user, admin
-  status    String   @default("offline")
-  lastSeen  DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      UserRole   @default(USER)
+  status    UserStatus @default(OFFLINE)
+  lastSeen  DateTime   @default(now())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   messages          Message[]
   rooms             RoomParticipant[]
@@ -33,6 +55,9 @@ model User {
   readMessages      MessageRead[]
   pushSubscriptions PushSubscription[]
 
+  @@index([email]) // Already unique, but explicit index for search queries
+  @@index([status]) // For filtering by online/offline status
+  @@index([status, lastSeen]) // Composite index for filtering by status and sorting by lastSeen
   @@map("users")
 }
 
@@ -41,8 +66,8 @@ model User {
 // ================================
 model ChatRoom {
   id          String   @id @default(cuid())
-  name        String
-  description String?
+  name        String   @db.VarChar(50)
+  description String?  @db.VarChar(200)
   isGroup     Boolean  @default(false)
   avatar      String?
   createdAt   DateTime @default(now())
@@ -54,6 +79,8 @@ model ChatRoom {
   messages     Message[]
   participants RoomParticipant[]
 
+  @@index([ownerId]) // For faster owner queries
+  @@index([updatedAt]) // For room list sorting by activity
   @@map("chat_rooms")
 }
 
@@ -72,6 +99,8 @@ model RoomParticipant {
   room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roomId])
+  @@index([userId]) // For faster user room lookups
+  @@index([roomId]) // For faster room participant queries
   @@map("room_participants")
 }
 
@@ -79,9 +108,9 @@ model RoomParticipant {
 // Message Model
 // ================================
 model Message {
-  id       String  @id @default(cuid())
-  content  String
-  type     String  @default("text") // text, image, video, file, audio
+  id       String      @id @default(cuid())
+  content  String      @db.VarChar(2000) // Max length enforced by DB
+  type     MessageType @default(TEXT)
   fileUrl  String? // URL or path to uploaded file
   fileName String? // Original file name
   fileSize Int? // File size in bytes
@@ -107,8 +136,11 @@ model Message {
   updatedAt DateTime @updatedAt
 
   @@index([roomId, createdAt])
+  @@index([roomId, isDeleted, createdAt]) // Composite index for common query pattern
   @@index([senderId])
   @@index([replyToId])
+  // Note: Full-text search index (GIN) must be created via SQL migration
+  // See: prisma/migrations/add_fulltext_search_index.sql
   @@map("messages")
 }
 

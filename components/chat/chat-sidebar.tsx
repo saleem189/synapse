@@ -439,7 +439,7 @@ export function ChatSidebar() {
               <div className="min-w-0">
                 <p className="font-medium text-sm text-surface-900 dark:text-white truncate flex items-center gap-1">
                   {user.name}
-                  {user.role === "admin" && (
+                  {user.role === "ADMIN" && (
                     <Shield className="w-3 h-3 text-red-500" />
                   )}
                 </p>
@@ -448,7 +448,7 @@ export function ChatSidebar() {
             </div>
 
             <div className="flex items-center gap-1">
-              {user.role === "admin" && (
+              {user.role === "ADMIN" && (
                 <Link
                   href="/admin"
                   className="w-9 h-9 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center text-red-500"

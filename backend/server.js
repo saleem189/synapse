@@ -237,6 +237,12 @@ function removeOnlineUser(socketId) {
 // AUTHENTICATION MIDDLEWARE
 // =====================
 // Authenticate socket connections before allowing access
+// CRITICAL FIX: Proper authentication with database verification
+
+// Import Prisma client for database verification
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
 io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
 
@@ -248,17 +254,49 @@ io.use(async (socket, next) => {
     return next(new Error('Authentication token required'));
   }
 
-  // Verify token (for now, accept any non-empty string as user ID)
-  // In production, you should verify this is a valid user ID from your database
-  // or use JWT tokens
-  if (typeof token === 'string' && token.length > 0) {
-    // Store user ID on socket for later use
-    socket.userId = token;
-    logger.log(`✅ [Auth] Socket ${socket.id} authenticated as user ${token}`);
+  try {
+    // Validate token format (CUID format used by Prisma)
+    if (typeof token !== 'string' || token.length === 0) {
+      logger.warn(`❌ [Auth] Invalid token format, rejecting connection`);
+      return next(new Error('Invalid authentication token'));
+    }
+
+    // Check if it's a valid CUID format
+    // CUID format: starts with 'c' followed by 24 alphanumeric characters
+    if (!/^c[a-z0-9]{24}$/.test(token)) {
+      logger.warn(`❌ [Auth] Invalid token format (not CUID), rejecting connection`);
+      return next(new Error('Invalid authentication token format'));
+    }
+
+    // Verify user exists in database and is active
+    const user = await prisma.user.findUnique({
+      where: { id: token },
+      select: {
+        id: true,
+        status: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      logger.warn(`❌ [Auth] User not found in database, rejecting connection`);
+      return next(new Error('User not found'));
+    }
+
+    // Check if user is banned or inactive
+    if (user.status === 'banned') {
+      logger.warn(`❌ [Auth] User account is banned, rejecting connection`);
+      return next(new Error('User account is banned'));
+    }
+
+    // Store user ID and role on socket for later use
+    socket.userId = user.id;
+    socket.userRole = user.role;
+    logger.log(`✅ [Auth] Socket ${socket.id} authenticated as user ${user.id} (${user.role})`);
     next();
-  } else {
-    logger.warn(`❌ [Auth] Invalid token format, rejecting connection`);
-    next(new Error('Invalid authentication token'));
+  } catch (error) {
+    logger.error(`❌ [Auth] Authentication error:`, error);
+    return next(new Error('Authentication failed'));
   }
 });
 

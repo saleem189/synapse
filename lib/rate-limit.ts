@@ -2,97 +2,137 @@
 // Rate Limiting
 // ================================
 // Rate limiting utilities for API routes and Socket.IO
-// Uses in-memory rate limiting (for single server) or can be extended to use Redis
+// CRITICAL FIX: Now uses Redis for distributed rate limiting
 
 import { NextRequest } from 'next/server';
+import { RateLimiterRedis } from 'rate-limiter-flexible';
+import { redisConnection } from '@/lib/queue/redis-connection';
+import { logger } from '@/lib/logger';
 
 /**
- * Simple in-memory rate limiter
- * For production with multiple servers, use Redis-based rate limiting
+ * Redis-based rate limiter for distributed systems
+ * Falls back to in-memory if Redis is unavailable
  */
-class RateLimiter {
-  private requests: Map<string, number[]> = new Map();
-  private readonly windowMs: number;
+class DistributedRateLimiter {
+  private redisLimiter: RateLimiterRedis | null = null;
+  private memoryLimiter: any = null;
   private readonly maxRequests: number;
+  private readonly windowMs: number;
+  private readonly keyPrefix: string;
 
-  constructor(maxRequests: number, windowMs: number) {
+  constructor(maxRequests: number, windowMs: number, keyPrefix: string) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
-    
-    // Clean up old entries every minute
-    setInterval(() => this.cleanup(), 60000);
+    this.keyPrefix = keyPrefix;
+
+    // Try to initialize Redis rate limiter
+    try {
+      this.redisLimiter = new RateLimiterRedis({
+        storeClient: redisConnection,
+        keyPrefix: `rl:${keyPrefix}:`,
+        points: maxRequests,
+        duration: Math.floor(windowMs / 1000), // Convert to seconds
+        blockDuration: Math.floor(windowMs / 1000), // Block for same duration
+      });
+      logger.log(`✅ Redis rate limiter initialized: ${keyPrefix}`);
+    } catch (error) {
+      logger.warn(`⚠️ Redis rate limiter failed, using in-memory fallback: ${keyPrefix}`, error);
+      // Fallback to in-memory (simple implementation)
+      this.memoryLimiter = new Map<string, number[]>();
+      setInterval(() => this.cleanup(), 60000);
+    }
   }
 
   /**
    * Check if request should be allowed
-   * @param identifier - Unique identifier (IP, user ID, etc.)
-   * @returns true if allowed, false if rate limited
    */
-  isAllowed(identifier: string): boolean {
+  async isAllowed(identifier: string): Promise<boolean> {
+    if (this.redisLimiter) {
+      try {
+        await this.redisLimiter.consume(identifier);
+        return true;
+      } catch (rejRes) {
+        return false;
+      }
+    }
+
+    // Fallback to in-memory
     const now = Date.now();
-    const requests = this.requests.get(identifier) || [];
-    
-    // Remove requests outside the time window
-    const validRequests = requests.filter(time => now - time < this.windowMs);
+    const requests = this.memoryLimiter.get(identifier) || [];
+    const validRequests = requests.filter((time: number) => now - time < this.windowMs);
     
     if (validRequests.length >= this.maxRequests) {
       return false;
     }
     
-    // Add current request
     validRequests.push(now);
-    this.requests.set(identifier, validRequests);
-    
+    this.memoryLimiter.set(identifier, validRequests);
     return true;
   }
 
   /**
-   * Get remaining requests for an identifier
+   * Get remaining requests
    */
-  getRemaining(identifier: string): number {
+  async getRemaining(identifier: string): Promise<number> {
+    if (this.redisLimiter) {
+      try {
+        const res = await this.redisLimiter.get(identifier);
+        return res ? res.remainingPoints : this.maxRequests;
+      } catch {
+        return this.maxRequests;
+      }
+    }
+
+    // Fallback
     const now = Date.now();
-    const requests = this.requests.get(identifier) || [];
-    const validRequests = requests.filter(time => now - time < this.windowMs);
+    const requests = this.memoryLimiter.get(identifier) || [];
+    const validRequests = requests.filter((time: number) => now - time < this.windowMs);
     return Math.max(0, this.maxRequests - validRequests.length);
   }
 
   /**
-   * Get reset time (when the rate limit window resets)
+   * Get reset time
    */
-  getResetTime(identifier: string): number {
+  async getResetTime(identifier: string): Promise<number> {
+    if (this.redisLimiter) {
+      try {
+        const res = await this.redisLimiter.get(identifier);
+        return res ? res.msBeforeNext + Date.now() : Date.now() + this.windowMs;
+      } catch {
+        return Date.now() + this.windowMs;
+      }
+    }
+
+    // Fallback
     const now = Date.now();
-    const requests = this.requests.get(identifier) || [];
-    const validRequests = requests.filter(time => now - time < this.windowMs);
-    
+    const requests = this.memoryLimiter.get(identifier) || [];
+    const validRequests = requests.filter((time: number) => now - time < this.windowMs);
     if (validRequests.length === 0) {
       return now + this.windowMs;
     }
-    
     const oldestRequest = Math.min(...validRequests);
     return oldestRequest + this.windowMs;
   }
 
-  /**
-   * Clean up old entries
-   */
   private cleanup(): void {
     const now = Date.now();
-    for (const [identifier, requests] of this.requests.entries()) {
-      const validRequests = requests.filter(time => now - time < this.windowMs);
+    for (const [identifier, requests] of this.memoryLimiter.entries()) {
+      const validRequests = requests.filter((time: number) => now - time < this.windowMs);
       if (validRequests.length === 0) {
-        this.requests.delete(identifier);
+        this.memoryLimiter.delete(identifier);
       } else {
-        this.requests.set(identifier, validRequests);
+        this.memoryLimiter.set(identifier, validRequests);
       }
     }
   }
 }
 
-// Create rate limiters for different endpoints
-export const messageRateLimiter = new RateLimiter(20, 60000); // 20 messages per minute
-export const apiRateLimiter = new RateLimiter(100, 60000); // 100 requests per minute
-export const authRateLimiter = new RateLimiter(5, 60000); // 5 auth attempts per minute
-export const uploadRateLimiter = new RateLimiter(10, 60000); // 10 uploads per minute
+// Create distributed rate limiters
+export const messageRateLimiter = new DistributedRateLimiter(20, 60000, 'message'); // 20 messages per minute
+export const apiRateLimiter = new DistributedRateLimiter(100, 60000, 'api'); // 100 requests per minute
+export const authRateLimiter = new DistributedRateLimiter(5, 60000, 'auth'); // 5 auth attempts per minute
+export const uploadRateLimiter = new DistributedRateLimiter(10, 60000, 'upload'); // 10 uploads per minute
+export const ipRateLimiter = new DistributedRateLimiter(200, 60000, 'ip'); // 200 requests per minute per IP
 
 /**
  * Get client identifier from request
@@ -119,17 +159,18 @@ export function getClientIdentifier(request: NextRequest, userId?: string): stri
  * Rate limit middleware for API routes
  * Returns NextResponse with 429 status if rate limited
  */
-export function rateLimitMiddleware(
+export async function rateLimitMiddleware(
   request: NextRequest,
-  limiter: RateLimiter,
+  limiter: DistributedRateLimiter,
   userId?: string
-): { allowed: boolean; response?: Response } {
+): Promise<{ allowed: boolean; response?: Response }> {
   const identifier = getClientIdentifier(request, userId);
   
-  if (!limiter.isAllowed(identifier)) {
-    const resetTime = limiter.getResetTime(identifier);
-    const remaining = limiter.getRemaining(identifier);
-    
+  const isAllowed = await limiter.isAllowed(identifier);
+  const remaining = await limiter.getRemaining(identifier);
+  const resetTime = await limiter.getResetTime(identifier);
+  
+  if (!isAllowed) {
     return {
       allowed: false,
       response: new Response(
@@ -155,9 +196,6 @@ export function rateLimitMiddleware(
       ),
     };
   }
-  
-  const remaining = limiter.getRemaining(identifier);
-  const resetTime = limiter.getResetTime(identifier);
   
   // Add rate limit headers to successful responses
   return {

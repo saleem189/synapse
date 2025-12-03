@@ -7,6 +7,9 @@ import { RoomRepository, RoomWithRelations } from '@/lib/repositories/room.repos
 import { UserRepository } from '@/lib/repositories/user.repository';
 import { ValidationError, NotFoundError, ForbiddenError } from '@/lib/errors';
 import { createRoomSchema } from '@/lib/validations';
+import { VALIDATION } from '@/lib/constants';
+import { ERROR_MESSAGES } from '@/lib/errors/error-messages';
+import { prisma } from '@/lib/prisma';
 
 export class RoomService {
   constructor(
@@ -54,11 +57,11 @@ export class RoomService {
       id: room.id,
       name: room.name,
       isGroup: room.isGroup,
-      lastMessage: room.messages[0]
+      lastMessage: room.messages?.[0]?.sender
         ? {
-            content: room.messages[0].content,
-            createdAt: room.messages[0].createdAt.toISOString(),
-            senderName: room.messages[0].sender.name,
+            content: room.messages[0]!.content,
+            createdAt: room.messages[0]!.createdAt.toISOString(),
+            senderName: room.messages[0]!.sender.name,
           }
         : undefined,
       participants: room.participants.map((p) => ({
@@ -80,7 +83,7 @@ export class RoomService {
     // Validate other user exists
     const otherUser = await this.userRepo.findById(otherUserId);
     if (!otherUser) {
-      throw new NotFoundError('User not found');
+      throw new NotFoundError(ERROR_MESSAGES.USER_NOT_FOUND);
     }
 
     // Check if DM already exists
@@ -96,21 +99,57 @@ export class RoomService {
       return { room: existingDM, existing: true };
     }
 
-    // Create new DM
-    const room = await this.roomRepo.create({
-      name: otherUser.name || 'Direct Message',
-      isGroup: false,
-      ownerId: userId,
+    // CRITICAL FIX: Use transaction to ensure atomic room creation and participant addition
+    const { room, roomWithRelations } = await prisma.$transaction(async (tx) => {
+      // Create room
+      const createdRoom = await tx.chatRoom.create({
+        data: {
+          name: otherUser.name || 'Direct Message',
+          isGroup: false,
+          ownerId: userId,
+        },
+      });
+
+      // Add participants atomically
+      await tx.roomParticipant.createMany({
+        data: [
+          { roomId: createdRoom.id, userId, role: 'admin' },
+          { roomId: createdRoom.id, userId: otherUserId, role: 'member' },
+        ],
+      });
+
+      // Fetch room with relations
+      const roomWithRelations = await tx.chatRoom.findUnique({
+        where: { id: createdRoom.id },
+        include: {
+          owner: {
+            select: { id: true, name: true, avatar: true },
+          },
+          participants: {
+            include: {
+              user: {
+                select: { id: true, name: true, avatar: true, email: true, status: true },
+              },
+            },
+          },
+          messages: {
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              sender: {
+                select: { id: true, name: true, avatar: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!roomWithRelations) {
+        throw new NotFoundError(ERROR_MESSAGES.ROOM_NOT_FOUND);
+      }
+
+      return { room: createdRoom, roomWithRelations };
     });
-
-    // Add participants
-    await this.roomRepo.addParticipant(room.id, userId, 'admin');
-    await this.roomRepo.addParticipant(room.id, otherUserId, 'member');
-
-    const roomWithRelations = await this.roomRepo.findByIdWithRelations(room.id);
-    if (!roomWithRelations) {
-      throw new NotFoundError('Failed to retrieve created room');
-    }
 
     return { room: roomWithRelations, existing: false };
   }
@@ -125,12 +164,12 @@ export class RoomService {
     description?: string
   ): Promise<RoomWithRelations> {
     // Validate input
-    if (!name || name.trim().length < 2) {
-      throw new ValidationError('Group name is required (min 2 characters)');
+    if (!name || name.trim().length < VALIDATION.MIN_ROOM_NAME_LENGTH) {
+      throw new ValidationError(ERROR_MESSAGES.GROUP_NAME_REQUIRED);
     }
 
     if (!Array.isArray(participantIds) || participantIds.length === 0) {
-      throw new ValidationError('Select at least one participant');
+      throw new ValidationError(ERROR_MESSAGES.PARTICIPANTS_REQUIRED);
     }
 
     // Filter valid participant IDs
@@ -139,35 +178,80 @@ export class RoomService {
     );
 
     if (validParticipantIds.length === 0) {
-      throw new ValidationError('Invalid participant IDs');
+      throw new ValidationError(ERROR_MESSAGES.INVALID_PARTICIPANT_IDS);
     }
 
-    // Validate all participants exist
-    for (const participantId of validParticipantIds) {
-      const user = await this.userRepo.findById(participantId);
-      if (!user) {
-        throw new NotFoundError(`User ${participantId} not found`);
-      }
-    }
-
-    // Create group room
-    const room = await this.roomRepo.create({
-      name: name.trim(),
-      description: description?.trim() || null,
-      isGroup: true,
-      ownerId: userId,
+    // Validate all participants exist (batch query to avoid N+1)
+    const users = await this.userRepo.findMany({
+      where: { id: { in: validParticipantIds } }
     });
 
-    // Add participants
-    await this.roomRepo.addParticipant(room.id, userId, 'admin');
-    for (const participantId of validParticipantIds) {
-      await this.roomRepo.addParticipant(room.id, participantId, 'member');
+    if (users.length !== validParticipantIds.length) {
+      const foundIds = new Set(users.map(u => u.id));
+      const missingIds = validParticipantIds.filter(id => !foundIds.has(id));
+      throw new NotFoundError(`${ERROR_MESSAGES.USER_NOT_FOUND}: ${missingIds.join(', ')}`);
     }
 
-    const roomWithRelations = await this.roomRepo.findByIdWithRelations(room.id);
-    if (!roomWithRelations) {
-      throw new NotFoundError('Failed to retrieve created room');
-    }
+    // CRITICAL FIX: Use transaction to ensure atomic room creation and participant addition
+    const roomWithRelations = await prisma.$transaction(async (tx) => {
+      // Create group room
+      const createdRoom = await tx.chatRoom.create({
+        data: {
+          name: name.trim(),
+          description: description?.trim() || null,
+          isGroup: true,
+          ownerId: userId,
+        },
+      });
+
+      // Add all participants atomically (owner as admin, others as members)
+      const participantData = [
+        { roomId: createdRoom.id, userId, role: 'admin' },
+        ...validParticipantIds
+          .filter(id => id !== userId) // Don't add owner twice
+          .map(participantId => ({
+            roomId: createdRoom.id,
+            userId: participantId,
+            role: 'member' as const,
+          })),
+      ];
+
+      await tx.roomParticipant.createMany({
+        data: participantData,
+      });
+
+      // Fetch room with relations
+      const roomWithRelations = await tx.chatRoom.findUnique({
+        where: { id: createdRoom.id },
+        include: {
+          owner: {
+            select: { id: true, name: true, avatar: true },
+          },
+          participants: {
+            include: {
+              user: {
+                select: { id: true, name: true, avatar: true, email: true, status: true },
+              },
+            },
+          },
+          messages: {
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              sender: {
+                select: { id: true, name: true, avatar: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!roomWithRelations) {
+        throw new NotFoundError(ERROR_MESSAGES.ROOM_NOT_FOUND);
+      }
+
+      return roomWithRelations;
+    });
 
     return roomWithRelations;
   }
@@ -187,12 +271,12 @@ export class RoomService {
     // Check if user is admin
     const isAdmin = await this.isRoomAdmin(roomId, userId);
     if (!isAdmin) {
-      throw new ForbiddenError('Only room admins can update room settings');
+      throw new ForbiddenError(ERROR_MESSAGES.ROOM_ADMIN_REQUIRED);
     }
 
     // Validate name if provided
-    if (updates.name !== undefined && updates.name.trim().length < 2) {
-      throw new ValidationError('Room name must be at least 2 characters');
+    if (updates.name !== undefined && updates.name.trim().length < VALIDATION.MIN_ROOM_NAME_LENGTH) {
+      throw new ValidationError(`Room name must be at least ${VALIDATION.MIN_ROOM_NAME_LENGTH} characters`);
     }
 
     // Update room
@@ -206,7 +290,7 @@ export class RoomService {
 
     const updatedRoom = await this.roomRepo.findByIdWithRelations(roomId);
     if (!updatedRoom) {
-      throw new NotFoundError('Room not found');
+      throw new NotFoundError(ERROR_MESSAGES.ROOM_NOT_FOUND);
     }
 
     return updatedRoom;
@@ -223,42 +307,50 @@ export class RoomService {
     // Check if user is admin
     const isAdmin = await this.isRoomAdmin(roomId, userId);
     if (!isAdmin) {
-      throw new ForbiddenError('Only room admins can add members');
+      throw new ForbiddenError(ERROR_MESSAGES.ROOM_ADMIN_REQUIRED);
     }
 
     // Validate input
     if (!Array.isArray(memberIds) || memberIds.length === 0) {
-      throw new ValidationError('userIds array is required');
+      throw new ValidationError(ERROR_MESSAGES.PARTICIPANTS_REQUIRED);
     }
 
     // Check if room is a group
     const room = await this.roomRepo.findById(roomId);
     if (!room) {
-      throw new NotFoundError('Room not found');
+      throw new NotFoundError(ERROR_MESSAGES.ROOM_NOT_FOUND);
     }
 
     if (!room.isGroup) {
-      throw new ValidationError('Can only add members to group chats');
+      throw new ValidationError(ERROR_MESSAGES.CAN_ONLY_ADD_TO_GROUP);
     }
 
-    // Add participants
-    const added: string[] = [];
-    for (const memberId of memberIds) {
-      // Validate user exists
-      const user = await this.userRepo.findById(memberId);
-      if (!user) {
-        continue; // Skip invalid users
-      }
+    // Batch validate users exist
+    const users = await this.userRepo.findMany({
+      where: { id: { in: memberIds } }
+    });
+    const validUserIds = new Set(users.map(u => u.id));
 
-      // Check if already participant
-      const isParticipant = await this.roomRepo.isParticipant(roomId, memberId);
-      if (!isParticipant) {
-        await this.roomRepo.addParticipant(roomId, memberId, 'member');
-        added.push(memberId);
-      }
+    // Batch check existing participants
+    const existingParticipants = await this.roomRepo.findParticipantsByRoomAndUsers(roomId, memberIds);
+    const existingParticipantIds = new Set(
+      existingParticipants.map(p => p.userId)
+    );
+
+    // Filter new participants and add in batch
+    const newParticipantIds = memberIds.filter(
+      id => validUserIds.has(id) && !existingParticipantIds.has(id)
+    );
+
+    if (newParticipantIds.length > 0) {
+      await Promise.all(
+        newParticipantIds.map(userId =>
+          this.roomRepo.addParticipant(roomId, userId, 'member')
+        )
+      );
     }
 
-    return { added };
+    return { added: newParticipantIds };
   }
 
   /**
@@ -272,23 +364,23 @@ export class RoomService {
     // Check if user is admin
     const isAdmin = await this.isRoomAdmin(roomId, userId);
     if (!isAdmin) {
-      throw new ForbiddenError('Only room admins can remove members');
+      throw new ForbiddenError(ERROR_MESSAGES.ROOM_ADMIN_REQUIRED);
     }
 
     // Check if trying to remove owner
     const room = await this.roomRepo.findById(roomId);
     if (!room) {
-      throw new NotFoundError('Room not found');
+      throw new NotFoundError(ERROR_MESSAGES.ROOM_NOT_FOUND);
     }
 
     if (room.ownerId === memberIdToRemove) {
-      throw new ValidationError('Cannot remove room owner');
+      throw new ValidationError(ERROR_MESSAGES.CANNOT_REMOVE_OWNER);
     }
 
     // Check if user is participant
     const isParticipant = await this.roomRepo.isParticipant(roomId, memberIdToRemove);
     if (!isParticipant) {
-      throw new NotFoundError('User is not a member of this room');
+      throw new NotFoundError(ERROR_MESSAGES.NOT_MEMBER);
     }
 
     // Remove participant
@@ -301,18 +393,18 @@ export class RoomService {
   async leaveRoom(roomId: string, userId: string): Promise<void> {
     const room = await this.roomRepo.findById(roomId);
     if (!room) {
-      throw new NotFoundError('Room not found');
+      throw new NotFoundError(ERROR_MESSAGES.ROOM_NOT_FOUND);
     }
 
     // Check if user is participant
     const isParticipant = await this.roomRepo.isParticipant(roomId, userId);
     if (!isParticipant) {
-      throw new ForbiddenError('You are not a member of this room');
+      throw new ForbiddenError(ERROR_MESSAGES.NOT_MEMBER);
     }
 
     // Can't leave if you're the owner
     if (room.ownerId === userId) {
-      throw new ValidationError('Room owner cannot leave. Transfer ownership first.');
+      throw new ValidationError(ERROR_MESSAGES.OWNER_CANNOT_LEAVE);
     }
 
     // Remove participant
@@ -326,12 +418,12 @@ export class RoomService {
     // Check if user is participant
     const isParticipant = await this.roomRepo.isParticipant(roomId, userId);
     if (!isParticipant) {
-      throw new ForbiddenError('Access denied');
+      throw new ForbiddenError(ERROR_MESSAGES.ACCESS_DENIED);
     }
 
     const room = await this.roomRepo.findByIdWithRelations(roomId);
     if (!room) {
-      throw new NotFoundError('Room not found');
+      throw new NotFoundError(ERROR_MESSAGES.ROOM_NOT_FOUND);
     }
 
     return room;
@@ -349,13 +441,13 @@ export class RoomService {
     // Check if requester is admin
     const isRequesterAdmin = await this.isRoomAdmin(roomId, userId);
     if (!isRequesterAdmin) {
-      throw new ForbiddenError('Only room admins can manage admins');
+      throw new ForbiddenError(ERROR_MESSAGES.ROOM_ADMIN_REQUIRED);
     }
 
     // Check if target user is participant
     const isParticipant = await this.roomRepo.isParticipant(roomId, targetUserId);
     if (!isParticipant) {
-      throw new NotFoundError('User is not a member of this room');
+      throw new NotFoundError(ERROR_MESSAGES.NOT_MEMBER);
     }
 
     // Update role

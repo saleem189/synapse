@@ -55,7 +55,7 @@ export default function LoginPage() {
       const session = await sessionRes.json();
       
       // Redirect based on role
-      if (session?.user?.role === "admin") {
+      if (session?.user?.role === "ADMIN") {
         router.push("/admin");
       } else {
         router.push(callbackUrl || "/chat");

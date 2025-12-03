@@ -25,9 +25,14 @@ export class EventBus {
   private patternSubscribers = new Map<string, Set<PatternEventHandler>>();
   private subscriber: Redis | null = null;
   private patternSubscriber: Redis | null = null;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(redis: Redis) {
     this.redis = redis;
+    // Start automatic cleanup of empty subscriptions every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupEmptySubscriptions();
+    }, 5 * 60 * 1000); // 5 minutes
   }
 
   /**
@@ -104,12 +109,18 @@ export class EventBus {
     this.subscribers.get(event)!.add(handler);
     logger.log(`📥 Subscribed to event: ${event}`);
 
-    // Return unsubscribe function
+    // Return unsubscribe function with error handling
     return () => {
-      this.subscribers.get(event)?.delete(handler);
-      if (this.subscribers.get(event)?.size === 0) {
-        this.subscribers.delete(event);
-        this.subscriber?.unsubscribe(`events:${event}`);
+      try {
+        this.subscribers.get(event)?.delete(handler);
+        if (this.subscribers.get(event)?.size === 0) {
+          this.subscribers.delete(event);
+          this.subscriber?.unsubscribe(`events:${event}`).catch((err) => {
+            logger.error(`Error unsubscribing from '${event}':`, err);
+          });
+        }
+      } catch (error) {
+        logger.error(`Error in unsubscribe function for '${event}':`, error);
       }
     };
   }
@@ -161,10 +172,16 @@ export class EventBus {
     logger.log(`📥 Subscribed to event pattern: ${pattern}`);
 
     return () => {
-      this.patternSubscribers.get(pattern)?.delete(handler);
-      if (this.patternSubscribers.get(pattern)?.size === 0) {
-        this.patternSubscribers.delete(pattern);
-        this.patternSubscriber?.punsubscribe(`events:${pattern}`);
+      try {
+        this.patternSubscribers.get(pattern)?.delete(handler);
+        if (this.patternSubscribers.get(pattern)?.size === 0) {
+          this.patternSubscribers.delete(pattern);
+          this.patternSubscriber?.punsubscribe(`events:${pattern}`).catch((err) => {
+            logger.error(`Error unsubscribing from pattern '${pattern}':`, err);
+          });
+        }
+      } catch (error) {
+        logger.error(`Error in pattern unsubscribe function for '${pattern}':`, error);
       }
     };
   }
@@ -196,19 +213,65 @@ export class EventBus {
   }
 
   /**
+   * Periodic cleanup of empty subscriber sets
+   */
+  private cleanupEmptySubscriptions(): void {
+    let cleaned = 0;
+    
+    // Clean up empty event subscribers
+    for (const [event, handlers] of this.subscribers.entries()) {
+      if (handlers.size === 0) {
+        this.subscribers.delete(event);
+        this.subscriber?.unsubscribe(`events:${event}`).catch((err) => {
+          logger.error(`Error unsubscribing during cleanup for '${event}':`, err);
+        });
+        cleaned++;
+      }
+    }
+    
+    // Clean up empty pattern subscribers
+    for (const [pattern, handlers] of this.patternSubscribers.entries()) {
+      if (handlers.size === 0) {
+        this.patternSubscribers.delete(pattern);
+        this.patternSubscriber?.punsubscribe(`events:${pattern}`).catch((err) => {
+          logger.error(`Error unsubscribing pattern during cleanup for '${pattern}':`, err);
+        });
+        cleaned++;
+      }
+    }
+    
+    if (cleaned > 0) {
+      logger.log(`🧹 Cleaned ${cleaned} empty subscription sets`);
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   async destroy(): Promise<void> {
-    if (this.subscriber) {
-      await this.subscriber.quit();
-      this.subscriber = null;
+    try {
+      // Stop automatic cleanup interval
+      if (this.cleanupInterval) {
+        clearInterval(this.cleanupInterval);
+        this.cleanupInterval = null;
+      }
+      
+      // Cleanup empty subscriptions first
+      this.cleanupEmptySubscriptions();
+      
+      if (this.subscriber) {
+        await this.subscriber.quit();
+        this.subscriber = null;
+      }
+      if (this.patternSubscriber) {
+        await this.patternSubscriber.quit();
+        this.patternSubscriber = null;
+      }
+      this.subscribers.clear();
+      this.patternSubscribers.clear();
+    } catch (error) {
+      logger.error('Error destroying EventBus:', error);
     }
-    if (this.patternSubscriber) {
-      await this.patternSubscriber.quit();
-      this.patternSubscriber = null;
-    }
-    this.subscribers.clear();
-    this.patternSubscribers.clear();
   }
 }
 

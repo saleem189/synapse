@@ -12,7 +12,7 @@ export default withAuth(
     const token = req.nextauth.token;
 
     // If user is admin, redirect them away from chat routes
-    if (token?.role === "admin") {
+    if (token?.role === "ADMIN") {
       // Admin trying to access chat - redirect to admin dashboard
       if (pathname.startsWith("/chat")) {
         return NextResponse.redirect(new URL("/admin", req.url));
@@ -20,7 +20,7 @@ export default withAuth(
     }
 
     // If user is NOT admin, redirect them away from admin routes
-    if (token && token.role !== "admin") {
+    if (token && token.role !== "ADMIN") {
       if (pathname.startsWith("/admin")) {
         return NextResponse.redirect(new URL("/chat", req.url));
       }

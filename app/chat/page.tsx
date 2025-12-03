@@ -12,7 +12,7 @@ export default async function ChatHomePage() {
   const session = await getServerSession(authOptions);
 
   // Redirect admins to admin dashboard
-  if (session?.user?.role === "admin") {
+  if (session?.user?.role === "ADMIN") {
     redirect("/admin");
   }
 

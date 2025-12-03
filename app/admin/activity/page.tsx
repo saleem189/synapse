@@ -16,7 +16,7 @@ import {
   Clock,
 } from "lucide-react";
 import { RelativeTime } from "@/components/admin/relative-time";
-import { useOnlineUsers } from "@/hooks";
+import { useOnlineUsers, useSocket } from "@/hooks";
 
 
 interface ActivityItem {

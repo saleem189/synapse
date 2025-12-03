@@ -260,6 +260,7 @@ export function MessageInput({
                 alt={selectedFile.fileName}
                 width={256}
                 height={256}
+                sizes="(max-width: 768px) 256px, 256px"
                 className="max-h-64 w-auto object-cover rounded-lg"
                 unoptimized={selectedFile.url.startsWith('/uploads')}
               />

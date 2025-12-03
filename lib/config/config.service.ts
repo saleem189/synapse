@@ -17,7 +17,9 @@ export class ConfigService {
   private cache = new Map<string, CachedConfig>();
   private redis: Redis;
   private defaultTTL = 300; // 5 minutes in seconds
+  private maxCacheSize = 500; // Maximum cache entries to prevent unbounded growth
   private subscriber: Redis | null = null;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   // Custom mapping for environment variables that don't follow the standard pattern
   private envKeyMap: Record<string, string> = {
@@ -31,6 +33,7 @@ export class ConfigService {
   constructor(redis: Redis) {
     this.redis = redis;
     this.setupWatcher();
+    this.startCacheCleanup();
   }
 
   /**
@@ -42,6 +45,11 @@ export class ConfigService {
     const cached = this.cache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.value as T;
+    }
+
+    // Enforce cache size limit before adding new entries
+    if (this.cache.size >= this.maxCacheSize) {
+      this.evictOldestEntry();
     }
 
     // Check Redis
@@ -224,9 +232,68 @@ export class ConfigService {
   }
 
   /**
+   * Clean up expired cache entries
+   */
+  private cleanupExpiredEntries(): void {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [key, config] of this.cache.entries()) {
+      if (config.expiresAt < now) {
+        this.cache.delete(key);
+        cleaned++;
+      }
+    }
+    
+    // If still over limit after cleaning expired entries, evict oldest
+    while (this.cache.size >= this.maxCacheSize) {
+      this.evictOldestEntry();
+      cleaned++;
+    }
+    
+    if (cleaned > 0) {
+      logger.log(`🧹 Cleaned ${cleaned} cache entries (expired: ${cleaned}, evicted: ${cleaned})`);
+    }
+  }
+
+  /**
+   * Evict the oldest cache entry (LRU-style)
+   */
+  private evictOldestEntry(): void {
+    if (this.cache.size === 0) return;
+    
+    let oldestKey: string | null = null;
+    let oldestExpiry = Infinity;
+    
+    for (const [key, config] of this.cache.entries()) {
+      if (config.expiresAt < oldestExpiry) {
+        oldestExpiry = config.expiresAt;
+        oldestKey = key;
+      }
+    }
+    
+    if (oldestKey) {
+      this.cache.delete(oldestKey);
+    }
+  }
+
+  /**
+   * Start periodic cache cleanup
+   */
+  private startCacheCleanup(): void {
+    // Cleanup expired entries every minute
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupExpiredEntries();
+    }, 60000); // 1 minute
+  }
+
+  /**
    * Cleanup resources
    */
   async destroy(): Promise<void> {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
     if (this.subscriber) {
       await this.subscriber.quit();
       this.subscriber = null;

@@ -21,7 +21,7 @@ export default async function AdminLayout({
   }
 
   // Check if user is admin
-  if (session.user.role !== "admin") {
+  if (session.user.role !== "ADMIN") {
     redirect("/chat");
   }
 

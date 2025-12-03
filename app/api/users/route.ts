@@ -9,9 +9,14 @@ import { authOptions } from "@/lib/auth";
 import { handleError, UnauthorizedError } from "@/lib/errors";
 import { getService } from "@/lib/di";
 import { UserService } from "@/lib/services/user.service";
+import { CACHE_HEADERS } from "@/lib/utils/cache-headers";
 
 // Get services from DI container
 const userService = getService<UserService>('userService');
+
+// Route segment config for caching
+export const dynamic = 'auto'; // Can be cached
+export const revalidate = 300; // Revalidate every 5 minutes
 
 /**
  * GET /api/users
@@ -40,7 +45,7 @@ export async function GET() {
 
     // Add caching headers - user list doesn't change frequently
     const response = NextResponse.json({ users });
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    response.headers.set('Cache-Control', CACHE_HEADERS.users);
     return response;
   } catch (error) {
     return handleError(error);

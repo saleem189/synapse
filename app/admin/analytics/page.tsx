@@ -46,7 +46,7 @@ export default function AnalyticsPage() {
     staleTime: 30 * 1000, // Consider data fresh for 30 seconds
   });
   
-  const stats = statsData || {
+  const stats: Stats = (statsData as unknown as Stats) || {
     totalUsers: 0,
     totalMessages: 0,
     totalRooms: 0,

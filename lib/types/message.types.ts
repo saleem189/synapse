@@ -9,9 +9,9 @@
 export type MessageStatus = 'sending' | 'sent' | 'failed';
 
 /**
- * Message type
+ * Message type (matches Prisma MessageType enum)
  */
-export type MessageType = 'text' | 'image' | 'video' | 'file' | 'audio';
+export type MessageType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'AUDIO';
 
 /**
  * Reply to message structure

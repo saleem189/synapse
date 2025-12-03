@@ -97,11 +97,15 @@ class ApiClient {
       `Request failed with status ${response.status}`;
 
     // Don't show toast for authentication errors (401, 403) - these are handled by auth system
-    // Don't show toast for 404 errors - these are usually handled gracefully in UI
+    // Show toast for important 404 errors (like "User not found") but not for resource not found
+    const isImportant404 = response.status === 404 && 
+      (errorMessage.toLowerCase().includes('user not found') ||
+       errorMessage.toLowerCase().includes('please log out'));
+    
     const shouldShowToast = showErrorToast &&
       response.status !== 401 &&
       response.status !== 403 &&
-      response.status !== 404;
+      (response.status !== 404 || isImportant404);
 
     if (shouldShowToast) {
       toast.error(errorMessage);

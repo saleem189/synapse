@@ -141,7 +141,7 @@ export const authOptions: NextAuthOptions = {
     // Redirect based on role after login
     async redirect({ url, token }) {
       // If admin, always go to admin dashboard
-      if (token?.role === "admin") {
+      if (token?.role === "ADMIN") {
         return "/admin";
       }
       // If regular user, go to chat

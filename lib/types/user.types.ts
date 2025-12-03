@@ -4,14 +4,14 @@
 // Shared TypeScript types for users
 
 /**
- * User role
+ * User role (matches Prisma UserRole enum)
  */
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'USER' | 'ADMIN';
 
 /**
- * User status
+ * User status (matches Prisma UserStatus enum)
  */
-export type UserStatus = 'online' | 'offline' | 'away' | 'busy';
+export type UserStatus = 'ONLINE' | 'OFFLINE' | 'AWAY';
 
 /**
  * User structure (public, without sensitive data)

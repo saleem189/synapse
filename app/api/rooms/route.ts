@@ -12,10 +12,17 @@ import { getService } from "@/lib/di";
 import { RoomService } from "@/lib/services/room.service";
 import { UserRepository } from "@/lib/repositories/user.repository";
 import { apiRateLimiter, rateLimitMiddleware } from "@/lib/rate-limit";
+import { CACHE_HEADERS } from "@/lib/utils/cache-headers";
+import { validateRequest } from "@/lib/middleware/validate-request";
+import { createRoomSchema } from "@/lib/validations";
 
 // Get services from DI container
 const roomService = getService<RoomService>('roomService');
 const userRepo = getService<UserRepository>('userRepository');
+
+// Route segment config for caching
+export const dynamic = 'force-dynamic'; // Rooms are dynamic
+export const revalidate = 60; // Revalidate every 60 seconds
 
 /**
  * GET /api/rooms
@@ -29,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Rate limiting
-    const rateLimit = rateLimitMiddleware(request, apiRateLimiter, session.user.id);
+    const rateLimit = await rateLimitMiddleware(request, apiRateLimiter, session.user.id);
     if (!rateLimit.allowed) {
       return rateLimit.response as NextResponse;
     }
@@ -38,8 +45,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({ rooms });
     
     // Add caching headers for better performance
-    // Cache for 30 seconds, allow stale-while-revalidate for 60 seconds
-    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+    response.headers.set('Cache-Control', CACHE_HEADERS.rooms);
     
     // Add rate limit headers
     if (rateLimit.response) {
@@ -66,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limiting
-    const rateLimit = rateLimitMiddleware(request, apiRateLimiter, session.user.id);
+    const rateLimit = await rateLimitMiddleware(request, apiRateLimiter, session.user.id);
     if (!rateLimit.allowed) {
       return rateLimit.response as NextResponse;
     }
@@ -77,28 +83,21 @@ export async function POST(request: NextRequest) {
       return handleError(new NotFoundError('User not found in database. Please log out and log back in.'));
     }
 
-    const body = await request.json();
-    const { name, description, isGroup = false, participantIds = [] } = body;
-
-    // Validate participantIds
-    if (!Array.isArray(participantIds) || participantIds.length === 0) {
-      return handleError(new ValidationError('Select at least one participant'));
+    // Validate request body using middleware
+    const validation = await validateRequest(request, createRoomSchema);
+    if (!validation.success) {
+      return validation.response;
     }
+    const validatedData = validation.data;
 
-    // Filter valid participant IDs
-    const validParticipantIds = participantIds.filter(
-      (id: string) => id && typeof id === "string" && id.trim().length > 0
-    );
-
-    if (validParticipantIds.length === 0) {
-      return handleError(new ValidationError('Invalid participant IDs'));
-    }
+    // Use validated data (participantIds is already validated by schema)
+    const { name, description, isGroup = false, participantIds } = validatedData;
 
     // For DMs (1-on-1 chat)
-    if (!isGroup && validParticipantIds.length === 1) {
+    if (!isGroup && participantIds.length === 1) {
       const { room, existing } = await roomService.createOrFindDM(
         session.user.id,
-        validParticipantIds[0]
+        participantIds[0]
       );
 
       return NextResponse.json({
@@ -120,8 +119,8 @@ export async function POST(request: NextRequest) {
     // For Group chats
     const room = await roomService.createGroup(
       session.user.id,
-      name,
-      validParticipantIds,
+      name || "",
+      participantIds,
       description
     );
 

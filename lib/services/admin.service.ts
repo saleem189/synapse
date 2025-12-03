@@ -26,11 +26,23 @@ export class AdminService {
 
   /**
    * Get all users with statistics
+   * Supports pagination and search
    */
-  async getAllUsers() {
+  async getAllUsers(options?: {
+    skip?: number;
+    take?: number;
+    search?: string;
+  }) {
     const prisma = this.userRepository.getPrismaClient();
+    const { skip = 0, take = 50, search } = options || {};
     
     return prisma.user.findMany({
+      where: search ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } }
+        ]
+      } : undefined,
       select: {
         id: true,
         name: true,
@@ -47,6 +59,8 @@ export class AdminService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
     });
   }
 

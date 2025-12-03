@@ -22,7 +22,7 @@ export async function DELETE(request: NextRequest) {
     if (!session?.user) {
       return handleError(new UnauthorizedError('You must be logged in'));
     }
-    if (session.user.role !== "admin") {
+    if (session.user.role !== "ADMIN") {
       return handleError(new ForbiddenError('Admin access required'));
     }
 

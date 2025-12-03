@@ -16,11 +16,15 @@ import { UserRepository } from '@/lib/repositories/user.repository';
 
 // Services
 import { MessageService } from '@/lib/services/message.service';
+import { MessageNotificationService } from '@/lib/services/message-notification.service';
+import { MessageReactionService } from '@/lib/services/message-reaction.service';
+import { MessageReadService } from '@/lib/services/message-read.service';
 import { RoomService } from '@/lib/services/room.service';
 import { UserService } from '@/lib/services/user.service';
 import { AdminService } from '@/lib/services/admin.service';
 import { QueueService } from '@/lib/queue/queue-service';
 import { EmailService } from '@/lib/services/email.service';
+import { CacheService, cacheService } from '@/lib/cache/cache.service';
 import { logger } from '@/lib/logger';
 
 /**
@@ -34,6 +38,9 @@ export function setupDI(): void {
   // Redis connection (shared instance)
   container.register('redis', () => redisConnection, true);
   
+  // Cache Service (needs Redis)
+  container.register('cacheService', () => cacheService, true);
+  
   // Config Service (needs Redis)
   const configService = new ConfigService(redisConnection);
   container.register('configService', () => configService, true);
@@ -46,17 +53,26 @@ export function setupDI(): void {
   // Register Prisma client (singleton)
   container.register('prisma', () => prisma, true);
 
-  // Register Repositories (singletons)
+  // Register Repositories (singletons) with cache service
   container.register('messageRepository', () => {
-    return new MessageRepository(container.resolveSync('prisma'));
+    return new MessageRepository(
+      container.resolveSync('prisma'),
+      container.resolveSync('cacheService')
+    );
   }, true);
 
   container.register('roomRepository', () => {
-    return new RoomRepository(container.resolveSync('prisma'));
+    return new RoomRepository(
+      container.resolveSync('prisma'),
+      container.resolveSync('cacheService')
+    );
   }, true);
 
   container.register('userRepository', () => {
-    return new UserRepository(container.resolveSync('prisma'));
+    return new UserRepository(
+      container.resolveSync('prisma'),
+      container.resolveSync('cacheService')
+    );
   }, true);
 
   // Register Queue Service FIRST (before other services that depend on it)
@@ -69,13 +85,39 @@ export function setupDI(): void {
   const pushServiceModule = require('@/lib/services/push.service');
   container.register('pushService', () => pushServiceModule.pushService, true);
 
-  // Register Services (singletons)
+  // Register specialized message services FIRST (before MessageService)
+  container.register('messageNotificationService', () => {
+    return new MessageNotificationService(
+      container.resolveSync('roomRepository'),
+      container.resolveSync('queueService'),
+      container.resolveSync('pushService') // Optional fallback
+    );
+  }, true);
+
+  container.register('messageReactionService', () => {
+    return new MessageReactionService(
+      container.resolveSync('messageRepository'),
+      container.resolveSync('roomRepository')
+    );
+  }, true);
+
+  container.register('messageReadService', () => {
+    return new MessageReadService(
+      container.resolveSync('messageRepository'),
+      container.resolveSync('roomRepository')
+    );
+  }, true);
+
+  // Register MessageService (core CRUD operations)
+  // Uses composition with specialized services
   container.register('messageService', () => {
     return new MessageService(
       container.resolveSync('messageRepository'),
       container.resolveSync('roomRepository'),
-      container.resolveSync('queueService'),
-      container.resolveSync('pushService') // Optional fallback
+      container.resolveSync('cacheService'), // Optional - for manual cache invalidation
+      container.resolveSync('messageNotificationService'), // Optional - for push notifications
+      container.resolveSync('messageReactionService'), // Optional - for reactions
+      container.resolveSync('messageReadService') // Optional - for read receipts
     );
   }, true);
 

@@ -11,6 +11,7 @@ import { handleError, UnauthorizedError, ValidationError } from "@/lib/errors";
 import { getService } from "@/lib/di";
 import { MessageService } from "@/lib/services/message.service";
 import { MessageRepository } from "@/lib/repositories/message.repository";
+import { validateRequest } from "@/lib/middleware/validate-request";
 import { z } from "zod";
 
 // Get services from DI container
@@ -46,18 +47,12 @@ export async function POST(request: NextRequest) {
       return handleError(new UnauthorizedError('You must be logged in'));
     }
 
-    // 2. Parse and validate request body
-    const body = await request.json();
-    const validationResult = batchReadSchema.safeParse(body);
-    
-    if (!validationResult.success) {
-      return handleError(new ValidationError(
-        'Invalid request body',
-        validationResult.error.errors
-      ));
+    // 2. Validate request body using middleware
+    const validation = await validateRequest(request, batchReadSchema);
+    if (!validation.success) {
+      return validation.response;
     }
-
-    const { messageIds } = validationResult.data;
+    const { messageIds } = validation.data;
     const userId = session.user.id;
 
     // 3. Filter out own messages (users can't mark their own messages as read)

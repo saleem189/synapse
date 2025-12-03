@@ -238,7 +238,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       />
                       <p className="text-xs text-surface-400 mt-1">Email cannot be changed</p>
                     </div>
-                    {user.role === "admin" && (
+                    {user.role === "ADMIN" && (
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
                         <Shield className="w-4 h-4 text-red-500" />
                         <span className="text-sm text-red-600 dark:text-red-400">Administrator Account</span>

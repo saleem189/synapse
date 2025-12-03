@@ -123,6 +123,7 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
             src={preview.image}
             alt={preview.title || "Preview"}
             fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover"
             onError={() => {
               // Image error handled by Next.js Image component

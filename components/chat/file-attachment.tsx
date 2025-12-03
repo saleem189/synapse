@@ -113,6 +113,7 @@ export function FileAttachment({
               alt={fileName}
               width={400}
               height={300}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 400px, 400px"
               className={cn(
                 "rounded-lg cursor-pointer",
                 "max-h-[300px] max-w-full object-contain"

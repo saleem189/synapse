@@ -139,19 +139,27 @@ export function useSocket(
     }, 100);
   }, [connect, disconnect]);
 
+  // Store connect function in ref to avoid dependency issues
+  const connectRef = useRef<() => Promise<void>>();
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
+
   // Auto-connect on mount
   useEffect(() => {
-    if (autoConnect) {
-      connect();
+    if (autoConnect && connectRef.current) {
+      connectRef.current();
     }
 
     return () => {
       // Cleanup on unmount
       if (cleanupRef.current) {
         cleanupRef.current();
+        cleanupRef.current = null;
       }
     };
-  }, [autoConnect, connect]);
+  }, [autoConnect]); // Only autoConnect in dependencies - connect function accessed via ref
 
   return {
     socket,

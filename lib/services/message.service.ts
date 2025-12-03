@@ -1,22 +1,95 @@
 // ================================
 // Message Service
 // ================================
-// Business logic layer for messages
+// Business logic layer for messages (core CRUD operations)
+// Uses composition with specialized services for notifications, reactions, and read receipts
 
 import { MessageRepository, MessageWithRelations } from '@/lib/repositories/message.repository';
 import { RoomRepository } from '@/lib/repositories/room.repository';
 import { ValidationError, NotFoundError, ForbiddenError } from '@/lib/errors';
 import { messageSchema } from '@/lib/validations';
-import { PushService } from '@/lib/services/push.service';
-import { QueueService } from '@/lib/queue/queue-service';
+import { CacheService } from '@/lib/cache/cache.service';
+import { MessageNotificationService } from '@/lib/services/message-notification.service';
+import { MessageReactionService } from '@/lib/services/message-reaction.service';
+import { MessageReadService } from '@/lib/services/message-read.service';
+import { logger } from '@/lib/logger';
+import { MESSAGE, VALIDATION } from '@/lib/constants';
+import { ERROR_MESSAGES } from '@/lib/errors/error-messages';
+import { sanitizeMessageContent } from '@/lib/utils/sanitize-server';
 
 export class MessageService {
   constructor(
     private messageRepo: MessageRepository,
     private roomRepo: RoomRepository,
-    private queueService: QueueService, // Injected via DI
-    private pushService?: PushService // Optional - injected via DI (fallback only)
+    private cacheService?: CacheService, // Optional - for manual cache invalidation
+    private notificationService?: MessageNotificationService, // Optional - for push notifications
+    private reactionService?: MessageReactionService, // Optional - for reactions
+    private readService?: MessageReadService // Optional - for read receipts
   ) { }
+
+  /**
+   * Validate message input (length, payload size, schema)
+   * Returns sanitized content and validated data
+   */
+  private async validateMessageInput(
+    content: string,
+    roomId: string,
+    options?: {
+      replyToId?: string;
+      fileUrl?: string;
+      fileName?: string;
+      fileSize?: number;
+      fileType?: string;
+      type?: 'text' | 'image' | 'video' | 'file' | 'audio';
+    }
+  ): Promise<{ sanitizedContent: string; validatedData: any }> {
+    // 1. Validate input length before parsing (DoS protection)
+    if (content && content.length > MESSAGE.MAX_CONTENT_LENGTH) {
+      throw new ValidationError(`${ERROR_MESSAGES.MESSAGE_CONTENT_TOO_LONG} (${MESSAGE.MAX_CONTENT_LENGTH} characters)`);
+    }
+
+    const payloadSize = JSON.stringify({ content, roomId, ...options }).length;
+    if (payloadSize > MESSAGE.MAX_PAYLOAD_SIZE) {
+      throw new ValidationError(ERROR_MESSAGES.PAYLOAD_TOO_LARGE);
+    }
+
+    // 2. Sanitize content to prevent XSS attacks
+    const sanitizedContent = content ? sanitizeMessageContent(content) : '';
+
+    // 3. Validate input schema (use sanitized content)
+    const validationResult = messageSchema.safeParse({
+      content: sanitizedContent,
+      roomId,
+      fileUrl: options?.fileUrl,
+      fileName: options?.fileName,
+      fileSize: options?.fileSize,
+      fileType: options?.fileType,
+      type: options?.type || 'text',
+      replyToId: options?.replyToId,
+    });
+
+    if (!validationResult.success) {
+      throw new ValidationError(ERROR_MESSAGES.INVALID_MESSAGE_DATA, validationResult.error.errors);
+    }
+
+    return {
+      sanitizedContent,
+      validatedData: validationResult.data,
+    };
+  }
+
+  /**
+   * Validate reply message if replying
+   */
+  private async validateReplyMessage(replyToId: string, roomId: string): Promise<void> {
+    const replyTo = await this.messageRepo.findById(replyToId);
+    if (!replyTo) {
+      throw new NotFoundError(ERROR_MESSAGES.REPLY_MESSAGE_NOT_FOUND);
+    }
+    if (replyTo.roomId !== roomId) {
+      throw new ValidationError(ERROR_MESSAGES.REPLY_SAME_ROOM);
+    }
+  }
 
   /**
    * Send a new message
@@ -34,157 +107,132 @@ export class MessageService {
       type?: 'text' | 'image' | 'video' | 'file' | 'audio';
     }
   ): Promise<MessageWithRelations> {
-    // 1. Validate input
-    const validationResult = messageSchema.safeParse({
-      content,
-      roomId,
-      fileUrl: options?.fileUrl,
-      fileName: options?.fileName,
-      fileSize: options?.fileSize,
-      fileType: options?.fileType,
-      type: options?.type || 'text',
-      replyToId: options?.replyToId,
-    });
-
-    if (!validationResult.success) {
-      throw new ValidationError('Invalid message data', validationResult.error.errors);
-    }
+    // 1. Validate input (length, payload, schema) and sanitize
+    const { sanitizedContent } = await this.validateMessageInput(content, roomId, options);
 
     // 2. Check if user is participant
-    const isParticipant = await this.roomRepo.isParticipant(roomId, userId);
-    if (!isParticipant) {
-      throw new ForbiddenError('User is not a participant in this room');
-    }
+    await this.requireParticipant(roomId, userId);
 
     // 3. Validate reply message if replying
     if (options?.replyToId) {
-      const replyTo = await this.messageRepo.findById(options.replyToId);
-      if (!replyTo) {
-        throw new NotFoundError('Reply message not found');
-      }
-      if (replyTo.roomId !== roomId) {
-        throw new ValidationError('Reply message must be in the same room');
-      }
+      await this.validateReplyMessage(options.replyToId, roomId);
     }
 
     // 4. Determine message type
-    const messageType = options?.type ||
-      (options?.fileType?.startsWith('image/') ? 'image' :
-        options?.fileType?.startsWith('video/') ? 'video' :
-          options?.fileType?.startsWith('audio/') ? 'audio' :
-            options?.fileUrl ? 'file' : 'text');
+    const messageType = this.determineMessageType(options);
 
-    // 5. Create message
-    const message = await this.messageRepo.create({
-      content: content || '',
-      type: messageType,
-      fileUrl: options?.fileUrl || null,
-      fileName: options?.fileName || null,
-      fileSize: options?.fileSize || null,
-      fileType: options?.fileType || null,
-      sender: {
-        connect: { id: userId },
-      },
-      room: {
-        connect: { id: roomId },
-      },
-      ...(options?.replyToId && {
-        replyTo: {
-          connect: { id: options.replyToId },
+    // 6. Create message and update room timestamp atomically
+    // CRITICAL FIX: Use transaction to ensure data consistency
+    const prisma = this.messageRepo.prisma;
+    const { message, fullMessage } = await prisma.$transaction(async (tx) => {
+      // Create message
+      const createdMessage = await tx.message.create({
+        data: {
+          content: sanitizedContent || '',
+          type: messageType,
+          fileUrl: options?.fileUrl || null,
+          fileName: options?.fileName || null,
+          fileSize: options?.fileSize || null,
+          fileType: options?.fileType || null,
+          sender: {
+            connect: { id: userId },
+          },
+          room: {
+            connect: { id: roomId },
+          },
+          ...(options?.replyToId && {
+            replyTo: {
+              connect: { id: options.replyToId },
+            },
+          }),
         },
-      }),
+      });
+
+      // Update room timestamp
+      await tx.chatRoom.update({
+        where: { id: roomId },
+        data: { updatedAt: new Date() },
+      });
+
+      // Fetch full message with relations
+      const messageWithRelations = await tx.message.findUnique({
+        where: { id: createdMessage.id },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+            },
+          },
+          replyTo: {
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          reactions: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          readReceipts: userId
+            ? {
+                where: {
+                  userId,
+                },
+              }
+            : true,
+        },
+      });
+
+      if (!messageWithRelations) {
+        throw new NotFoundError(ERROR_MESSAGES.MESSAGE_NOT_FOUND);
+      }
+
+      return {
+        message: createdMessage,
+        fullMessage: messageWithRelations as MessageWithRelations,
+      };
     });
 
-    // 6. Update room timestamp
-    await this.roomRepo.update(roomId, { updatedAt: new Date() });
-
-    // 7. Fetch full message with relations
-    const fullMessage = await this.messageRepo.findByIdWithRelations(message.id, userId);
-    if (!fullMessage) {
-      throw new NotFoundError('Failed to retrieve created message');
+    // Invalidate cache after transaction completes
+    if (this.cacheService) {
+      await Promise.all([
+        this.cacheService.invalidate(`messages:room:${roomId}*`),
+        this.cacheService.invalidate(`room:${roomId}*`),
+        this.cacheService.invalidate(`rooms:user:*`), // Invalidate all user room lists
+      ]);
     }
 
-    // 8. Send push notification to other participants
+    // 9. Send push notification to other participants
     // We don't await this to avoid blocking the response
-    this.sendPushNotifications(roomId, userId, content, messageType, options?.fileName).catch(console.error);
+    // Use original content for notification (not sanitized, as it's just for display)
+    if (this.notificationService) {
+      this.notificationService
+        .sendPushNotifications(roomId, userId, content || '', messageType, options?.fileName)
+        .catch((error) => {
+          logger.error('Failed to send push notifications:', error);
+          // Track error for monitoring/metrics (fire-and-forget operation)
+          // TODO: Add metrics service to track push notification failures
+          // metricsService?.recordError('push_notification', error);
+        });
+    }
 
     return fullMessage;
   }
 
-  /**
-   * Send push notifications to offline/inactive participants
-   */
-  private async sendPushNotifications(
-    roomId: string,
-    senderId: string,
-    content: string,
-    type: string,
-    fileName?: string
-  ) {
-    try {
-      // Get room participants
-      const room = await this.roomRepo.findByIdWithRelations(roomId);
-      if (!room) return;
-
-      // Safety check: ensure participants array exists
-      if (!room.participants || !Array.isArray(room.participants)) {
-        console.warn('Room participants not available for push notifications');
-        return;
-      }
-
-      const sender = room.participants.find(p => p.userId === senderId)?.user;
-      if (!sender) return;
-
-      // Filter participants who are not the sender
-      const recipients = room.participants.filter(p => p.userId !== senderId);
-
-      // Prepare notification payload
-      const title = room.isGroup ? `${sender.name} in ${room.name}` : sender.name;
-      const body = type === 'text'
-        ? content
-        : type === 'image'
-          ? '📷 Sent an image'
-          : type === 'file'
-            ? `📎 Sent a file: ${fileName || 'Attachment'}`
-            : `Sent a ${type}`;
-
-      const url = `/chat?roomId=${roomId}`;
-      const icon = sender.avatar || '/icon-192x192.png'; // Fallback icon
-
-      // Send to each recipient via queue (non-blocking)
-      // This prevents blocking the message send operation
-      if (!this.queueService) {
-        // Fallback if queue service not injected (shouldn't happen in production)
-        console.warn('QueueService not injected, falling back to direct push');
-        const fallbackPushService = this.pushService || (await import('@/lib/services/push.service')).pushService;
-        await Promise.all(recipients.map(async (recipient) => {
-          await fallbackPushService.sendNotification(recipient.userId, {
-            title,
-            body,
-            url,
-            icon,
-          });
-        }));
-        return;
-      }
-      
-      await Promise.all(recipients.map(async (recipient) => {
-        // Add to queue instead of sending directly
-        // Worker process will handle sending
-        await this.queueService!.addPushNotification(recipient.userId, {
-          title,
-          body,
-          url,
-          icon,
-        }).catch((error) => {
-          // Log but don't fail message send if queue fails
-          console.error('Failed to queue push notification:', error);
-        });
-      }));
-    } catch (error) {
-      console.error('Failed to send push notifications:', error);
-    }
-  }
 
   /**
    * Get messages for a room with pagination
@@ -223,10 +271,7 @@ export class MessageService {
     nextCursor?: string;
   }> {
     // 1. Check access
-    const isParticipant = await this.roomRepo.isParticipant(roomId, userId);
-    if (!isParticipant) {
-      throw new ForbiddenError('Access denied');
-    }
+    await this.requireParticipant(roomId, userId);
 
     // 2. Fetch messages
     const messages = await this.messageRepo.findByRoomId(roomId, {
@@ -242,18 +287,8 @@ export class MessageService {
 
     // Transform messages to match expected format
     const transformedMessages = messagesToReturn.map((message) => {
-      // Group reactions by emoji
-      const reactionsByEmoji = message.reactions.reduce((acc, reaction) => {
-        if (!acc[reaction.emoji]) {
-          acc[reaction.emoji] = [];
-        }
-        acc[reaction.emoji].push({
-          id: reaction.user.id,
-          name: reaction.user.name,
-          avatar: reaction.user.avatar,
-        });
-        return acc;
-      }, {} as Record<string, Array<{ id: string; name: string; avatar: string | null }>>);
+      // Group reactions by emoji (extracted to helper method)
+      const reactionsByEmoji = this.groupReactionsByEmoji(message.reactions);
 
       return {
         id: message.id,
@@ -299,14 +334,11 @@ export class MessageService {
     limit: number = 20
   ): Promise<MessageWithRelations[]> {
     // 1. Check access
-    const isParticipant = await this.roomRepo.isParticipant(roomId, userId);
-    if (!isParticipant) {
-      throw new ForbiddenError('Access denied');
-    }
+    await this.requireParticipant(roomId, userId);
 
     // 2. Validate query
-    if (!query || query.trim().length < 2) {
-      throw new ValidationError('Search query must be at least 2 characters');
+    if (!query || query.trim().length < VALIDATION.MIN_SEARCH_LENGTH) {
+      throw new ValidationError(`${ERROR_MESSAGES.SEARCH_QUERY_TOO_SHORT} (${VALIDATION.MIN_SEARCH_LENGTH} characters)`);
     }
 
     // 3. Search messages
@@ -315,17 +347,15 @@ export class MessageService {
 
   /**
    * Mark message as read
+   * Optimized: Verifies message exists and user is participant in single query
    */
   async markAsRead(messageId: string, userId: string): Promise<void> {
-    const message = await this.messageRepo.findById(messageId);
-    if (!message) {
-      throw new NotFoundError('Message not found');
-    }
+    // Verify message exists and user is participant in one query (atomic check)
+    // This prevents TOCTOU (Time-of-check to time-of-use) vulnerabilities
+    const message = await this.messageRepo.findMessageWithParticipantCheck(messageId, userId);
 
-    // Check if user is participant
-    const isParticipant = await this.roomRepo.isParticipant(message.roomId, userId);
-    if (!isParticipant) {
-      throw new ForbiddenError('Access denied');
+    if (!message) {
+      throw new NotFoundError(`${ERROR_MESSAGES.MESSAGE_NOT_FOUND} or ${ERROR_MESSAGES.ACCESS_DENIED}`);
     }
 
     await this.messageRepo.markAsRead(messageId, userId);
@@ -339,124 +369,87 @@ export class MessageService {
     userId: string,
     emoji: string
   ): Promise<{ action: 'added' | 'removed'; reaction: any }> {
+    if (this.reactionService) {
+      return this.reactionService.toggleReaction(messageId, userId, emoji);
+    }
+    // Fallback to direct repository call if service not injected
     const message = await this.messageRepo.findById(messageId);
     if (!message) {
-      throw new NotFoundError('Message not found');
+      throw new NotFoundError(ERROR_MESSAGES.MESSAGE_NOT_FOUND);
     }
-
-    // Check if user is participant
-    const isParticipant = await this.roomRepo.isParticipant(message.roomId, userId);
-    if (!isParticipant) {
-      throw new ForbiddenError('Access denied');
-    }
-
-    // Validate emoji
+    await this.requireParticipant(message.roomId, userId);
     if (!emoji || emoji.trim().length === 0 || emoji.length > 10) {
-      throw new ValidationError('Invalid emoji');
+      throw new ValidationError(ERROR_MESSAGES.INVALID_EMOJI);
     }
-
-    // Check if reaction already exists
-    const existingReaction = await this.messageRepo.prisma.messageReaction.findUnique({
-      where: {
-        messageId_userId_emoji: {
-          messageId,
-          userId,
-          emoji: emoji.trim(),
-        },
-      },
-    });
-
+    const existingReaction = await this.messageRepo.findReaction(messageId, userId, emoji);
     if (existingReaction) {
-      // Remove reaction
       await this.messageRepo.removeReaction(messageId, userId, emoji.trim());
       return { action: 'removed', reaction: null };
     } else {
-      // Add reaction
       await this.messageRepo.addReaction(messageId, userId, emoji.trim());
-      const reaction = await this.messageRepo.prisma.messageReaction.findUnique({
-        where: {
-          messageId_userId_emoji: {
-            messageId,
-            userId,
-            emoji: emoji.trim(),
-          },
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-        },
-      });
+      const reaction = await this.messageRepo.findReaction(messageId, userId, emoji);
       return { action: 'added', reaction };
     }
   }
 
   /**
-   * Get read receipts for a message
+   * Determine message type based on options
+   * Extracted to improve readability and maintainability
+   * Returns uppercase enum values to match Prisma MessageType enum
    */
-  async getReadReceipts(messageId: string, userId: string): Promise<Array<{ id: string; userId: string; readAt: Date; user: { id: string; name: string; avatar: string | null } }>> {
-    const message = await this.messageRepo.findById(messageId);
-    if (!message) {
-      throw new NotFoundError('Message not found');
+  private determineMessageType(
+    options?: {
+      fileUrl?: string;
+      fileName?: string;
+      fileSize?: number;
+      fileType?: string;
+      type?: string; // Accepts both lowercase and uppercase
+    }
+  ): 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'AUDIO' {
+    // If type is explicitly provided, normalize to uppercase
+    if (options?.type) {
+      const normalized = options.type.toUpperCase();
+      if (['TEXT', 'IMAGE', 'VIDEO', 'FILE', 'AUDIO'].includes(normalized)) {
+        return normalized as 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'AUDIO';
+      }
     }
 
-    // Check if user is participant
-    const isParticipant = await this.roomRepo.isParticipant(message.roomId, userId);
-    if (!isParticipant) {
-      throw new ForbiddenError('Access denied');
+    // If no file type, check if there's a file URL
+    if (!options?.fileType) {
+      return options?.fileUrl ? 'FILE' : 'TEXT';
     }
 
-    const readReceipts = await this.messageRepo.prisma.messageRead.findMany({
-      where: { messageId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-          },
-        },
-      },
-      orderBy: { readAt: 'asc' },
-    });
+    // Determine type based on file MIME type
+    const fileType = options.fileType.toLowerCase();
 
-    return readReceipts;
+    if (fileType.startsWith('image/')) return 'IMAGE';
+    if (fileType.startsWith('video/')) return 'VIDEO';
+    if (fileType.startsWith('audio/')) return 'AUDIO';
+
+    return 'FILE';
   }
 
   /**
-   * Get reactions for a message
+   * Require user to be a participant in the room
+   * Extracted to reduce code duplication and improve maintainability
    */
-  async getReactions(messageId: string, userId: string): Promise<Record<string, Array<{ id: string; name: string; avatar: string | null }>>> {
-    const message = await this.messageRepo.findById(messageId);
-    if (!message) {
-      throw new NotFoundError('Message not found');
-    }
-
-    // Check if user is participant
-    const isParticipant = await this.roomRepo.isParticipant(message.roomId, userId);
+  private async requireParticipant(roomId: string, userId: string): Promise<void> {
+    const isParticipant = await this.roomRepo.isParticipant(roomId, userId);
     if (!isParticipant) {
-      throw new ForbiddenError('Access denied');
+      throw new ForbiddenError(ERROR_MESSAGES.ACCESS_DENIED);
     }
+  }
 
-    const reactions = await this.messageRepo.prisma.messageReaction.findMany({
-      where: { messageId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    // Group reactions by emoji
+  /**
+   * Group reactions by emoji
+   * Extracted to reduce complexity in getMessages
+   */
+  private groupReactionsByEmoji(
+    reactions: Array<{
+      emoji: string;
+      user: { id: string; name: string; avatar: string | null };
+    }>
+  ): Record<string, Array<{ id: string; name: string; avatar: string | null }>> {
     return reactions.reduce((acc, reaction) => {
       if (!acc[reaction.emoji]) {
         acc[reaction.emoji] = [];
@@ -471,6 +464,39 @@ export class MessageService {
   }
 
   /**
+   * Get read receipts for a message
+   */
+  async getReadReceipts(messageId: string, userId: string): Promise<Array<{ id: string; userId: string; readAt: Date; user: { id: string; name: string; avatar: string | null } }>> {
+    if (this.readService) {
+      return this.readService.getReadReceipts(messageId, userId);
+    }
+    // Fallback to direct repository call if service not injected
+    const message = await this.messageRepo.findById(messageId);
+    if (!message) {
+      throw new NotFoundError(ERROR_MESSAGES.MESSAGE_NOT_FOUND);
+    }
+    await this.requireParticipant(message.roomId, userId);
+    return await this.messageRepo.getReadReceipts(messageId);
+  }
+
+  /**
+   * Get reactions for a message
+   */
+  async getReactions(messageId: string, userId: string): Promise<Record<string, Array<{ id: string; name: string; avatar: string | null }>>> {
+    if (this.reactionService) {
+      return this.reactionService.getReactions(messageId, userId);
+    }
+    // Fallback to direct repository call if service not injected
+    const message = await this.messageRepo.findById(messageId);
+    if (!message) {
+      throw new NotFoundError(ERROR_MESSAGES.MESSAGE_NOT_FOUND);
+    }
+    await this.requireParticipant(message.roomId, userId);
+    const reactions = await this.messageRepo.getReactions(messageId);
+    return this.groupReactionsByEmoji(reactions);
+  }
+
+  /**
    * Edit a message
    */
   async editMessage(
@@ -480,12 +506,12 @@ export class MessageService {
   ): Promise<MessageWithRelations> {
     const message = await this.messageRepo.findById(messageId);
     if (!message) {
-      throw new NotFoundError('Message not found');
+      throw new NotFoundError(ERROR_MESSAGES.MESSAGE_NOT_FOUND);
     }
 
     // Check ownership
     if (message.senderId !== userId) {
-      throw new ForbiddenError('You can only edit your own messages');
+      throw new ForbiddenError(ERROR_MESSAGES.CAN_ONLY_EDIT_OWN);
     }
 
     // Validate content
@@ -493,8 +519,8 @@ export class MessageService {
       throw new ValidationError('Message content cannot be empty');
     }
 
-    if (content.length > 2000) {
-      throw new ValidationError('Message must be less than 2000 characters');
+    if (content.length > MESSAGE.MAX_CONTENT_LENGTH) {
+      throw new ValidationError(`Message must be less than ${MESSAGE.MAX_CONTENT_LENGTH} characters`);
     }
 
     // Update message
@@ -505,7 +531,7 @@ export class MessageService {
 
     const updatedMessage = await this.messageRepo.findByIdWithRelations(messageId);
     if (!updatedMessage) {
-      throw new NotFoundError('Failed to retrieve updated message');
+      throw new NotFoundError(ERROR_MESSAGES.MESSAGE_NOT_FOUND);
     }
 
     return updatedMessage;
@@ -517,12 +543,12 @@ export class MessageService {
   async deleteMessage(messageId: string, userId: string): Promise<void> {
     const message = await this.messageRepo.findById(messageId);
     if (!message) {
-      throw new NotFoundError('Message not found');
+      throw new NotFoundError(ERROR_MESSAGES.MESSAGE_NOT_FOUND);
     }
 
     // Check ownership
     if (message.senderId !== userId) {
-      throw new ForbiddenError('You can only delete your own messages');
+      throw new ForbiddenError(ERROR_MESSAGES.CAN_ONLY_DELETE_OWN);
     }
 
     await this.messageRepo.softDelete(messageId);

@@ -104,7 +104,7 @@ export default async function ChatRoomPage({ params }: ChatRoomPageProps) {
   }
 
   // Redirect admins to admin dashboard
-  if (session.user.role === "admin") {
+  if (session.user.role === "ADMIN") {
     redirect("/admin");
   }
 

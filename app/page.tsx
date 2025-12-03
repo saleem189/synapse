@@ -27,7 +27,7 @@ export default async function LandingPage() {
 
   // If logged in, redirect based on role
   if (session) {
-    if (session.user.role === "admin") {
+    if (session.user.role === "ADMIN") {
       redirect("/admin");
     }
     redirect("/chat");

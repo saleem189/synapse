@@ -8,6 +8,7 @@ import { ValidationError, NotFoundError, ForbiddenError } from '@/lib/errors';
 import bcrypt from 'bcryptjs';
 import { getService } from '@/lib/di';
 import { EventBus } from '@/lib/events/event-bus';
+import { logger } from '@/lib/logger';
 
 export class UserService {
   constructor(private userRepo: UserRepository) {}
@@ -54,7 +55,7 @@ export class UserService {
       });
     } catch (error) {
       // Don't fail registration if event publishing fails
-      console.error('Failed to publish user.registered event:', error);
+      logger.error('Failed to publish user.registered event:', error);
     }
 
     return {

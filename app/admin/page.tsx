@@ -66,6 +66,9 @@ async function getStats() {
   };
 }
 
+// ISR: Revalidate every 30 seconds for admin stats
+export const revalidate = 30;
+
 export default async function AdminDashboard() {
   const stats = await getStats();
 

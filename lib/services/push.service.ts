@@ -105,32 +105,60 @@ export class PushService {
 
     const notificationPayload = JSON.stringify(payload);
 
-    // Send to all subscriptions
-    const promises = subscriptions.map(async (sub) => {
-      try {
-        await this.webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth,
+    // Send to all subscriptions using Promise.allSettled to handle failures gracefully
+    const results = await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        try {
+          await this.webpush.sendNotification(
+            {
+              endpoint: sub.endpoint,
+              keys: {
+                p256dh: sub.p256dh,
+                auth: sub.auth,
+              },
             },
-          },
-          notificationPayload
-        );
-      } catch (error: any) {
-        // If subscription is invalid (410 Gone), delete it
-        if (error.statusCode === 410) {
-          await prisma.pushSubscription.delete({
-            where: { id: sub.id },
-          });
-        } else {
-          logger.error('Error sending push notification:', error);
+            notificationPayload
+          );
+          return { success: true, subscriptionId: sub.id };
+        } catch (error: any) {
+          // If subscription is invalid (410 Gone), delete it
+          if (error.statusCode === 410) {
+            await prisma.pushSubscription.delete({
+              where: { id: sub.id },
+            });
+            logger.log(`Removed invalid subscription ${sub.id}`);
+          } else {
+            logger.error(`Error sending push notification to ${sub.id}:`, error);
+          }
+          return { success: false, subscriptionId: sub.id, error };
         }
-      }
-    });
+      })
+    );
 
-    await Promise.all(promises);
+    // Log summary with details
+    const failed = results.filter(
+      r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
+    );
+    const successful = results.filter(
+      r => r.status === 'fulfilled' && r.value.success
+    );
+    
+    if (failed.length > 0) {
+      const failedDetails = failed.map(r => {
+        if (r.status === 'rejected') {
+          return { subscriptionId: 'unknown', error: r.reason?.message || 'Unknown error' };
+        }
+        return { subscriptionId: r.value.subscriptionId, error: r.value.error?.message || 'Unknown error' };
+      });
+      logger.warn(
+        `Failed to send ${failed.length}/${subscriptions.length} push notifications`,
+        { failed: failedDetails }
+      );
+    }
+    
+    if (successful.length > 0) {
+      logger.log(`✅ Successfully sent ${successful.length}/${subscriptions.length} push notifications`);
+    }
   }
 }
 

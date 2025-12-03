@@ -77,10 +77,25 @@ export const RATE_LIMITS = {
  * Message Constants
  */
 export const MESSAGE = {
-  MAX_CONTENT_LENGTH: 5000, // characters
+  MAX_CONTENT_LENGTH: 2000, // characters (matches validation)
+  MIN_CONTENT_LENGTH: 1, // minimum characters
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB in bytes
   PAGINATION_LIMIT: 50, // messages per page
   INITIAL_LOAD_LIMIT: 100, // initial messages to load
+  MAX_PAYLOAD_SIZE: 10000, // bytes for request payload
+} as const;
+
+/**
+ * Validation Constants
+ */
+export const VALIDATION = {
+  MIN_SEARCH_LENGTH: 2, // minimum search query length
+  MIN_ROOM_NAME_LENGTH: 2, // minimum room name length
+  MAX_ROOM_NAME_LENGTH: 100, // maximum room name length
+  MIN_MESSAGE_LENGTH: 1, // minimum message length
+  MAX_MESSAGE_LENGTH: 2000, // maximum message length
+  DEFAULT_PAGINATION: 50, // default pagination size
+  MAX_PAGINATION: 100, // maximum pagination size
 } as const;
 
 /**
@@ -137,24 +152,30 @@ export const MESSAGE_STATUS = {
 /**
  * Message Types
  */
+/**
+ * Message Types (matches Prisma MessageType enum)
+ * @deprecated Use Prisma MessageType enum or TypeScript MessageType type instead
+ */
 export const MESSAGE_TYPE = {
-  TEXT: 'text',
-  IMAGE: 'image',
-  VIDEO: 'video',
-  FILE: 'file',
-  AUDIO: 'audio',
+  TEXT: 'TEXT',   // ✅ Uppercase to match enum
+  IMAGE: 'IMAGE', // ✅ Uppercase to match enum
+  VIDEO: 'VIDEO', // ✅ Uppercase to match enum
+  FILE: 'FILE',   // ✅ Uppercase to match enum
+  AUDIO: 'AUDIO', // ✅ Uppercase to match enum
 } as const;
 
 /**
- * User Roles
+ * User Roles (matches Prisma UserRole enum)
+ * @deprecated Use Prisma UserRole enum or TypeScript UserRole type instead
  */
 export const USER_ROLE = {
-  USER: 'user',
-  ADMIN: 'admin',
+  USER: 'USER',    // ✅ Uppercase to match enum
+  ADMIN: 'ADMIN',  // ✅ Uppercase to match enum
 } as const;
 
 /**
  * Room Participant Roles
+ * Note: This is a string field, not an enum, so lowercase is correct
  */
 export const PARTICIPANT_ROLE = {
   MEMBER: 'member',
@@ -162,12 +183,13 @@ export const PARTICIPANT_ROLE = {
 } as const;
 
 /**
- * User Status
+ * User Status (matches Prisma UserStatus enum)
+ * @deprecated Use Prisma UserStatus enum or TypeScript UserStatus type instead
  */
 export const USER_STATUS = {
-  ONLINE: 'online',
-  OFFLINE: 'offline',
-  AWAY: 'away',
-  BUSY: 'busy',
+  ONLINE: 'ONLINE',   // ✅ Uppercase to match enum
+  OFFLINE: 'OFFLINE', // ✅ Uppercase to match enum
+  AWAY: 'AWAY',       // ✅ Uppercase to match enum
+  // Note: BUSY is not in the enum, only ONLINE, OFFLINE, AWAY
 } as const;
 
