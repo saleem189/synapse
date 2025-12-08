@@ -8,7 +8,7 @@
 
 import Redis from 'ioredis';
 import { logger } from '@/lib/logger';
-import { env } from '@/lib/env';
+require('dotenv').config();
 
 // Parse Redis URL or use defaults
 function getRedisConfig() {

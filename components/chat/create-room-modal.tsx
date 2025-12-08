@@ -59,24 +59,18 @@ export function CreateRoomModal({
   const [groupName, setGroupName] = useState("");
 
   // Fetch users - moved before conditional return to fix React hooks violation
-  useEffect(() => {
-    const currentUserId = currentUser?.id;
-    if (isOpen && currentUserId) {
-      fetchUsers();
-    } else if (!isOpen) {
-      // Reset on close
-      setMode("select");
-      setSearchQuery("");
-      setSelectedUsers([]);
-      setGroupName("");
-    }
-  }, [isOpen, currentUser?.id]);
-
-  // Early return after all hooks are called
-  const currentUserId = currentUser?.id;
-  if (!currentUserId) {
-    return null; // Or show loading state
-  }
+  // useEffect(() => {
+  //   const currentUserId = currentUser?.id;
+  //   if (isOpen && currentUserId) {
+  //     fetchUsers();
+  //   } else if (!isOpen) {
+  //     // Reset on close
+  //     setMode("select");
+  //     setSearchQuery("");
+  //     setSelectedUsers([]);
+  //     setGroupName("");
+  //   }
+  // }, [isOpen, currentUser?.id]);
 
   const fetchUsers = useCallback(async () => {
     const currentUserId = currentUser?.id;
@@ -94,6 +88,27 @@ export function CreateRoomModal({
       setIsLoading(false);
     }
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    const currentUserId = currentUser?.id;
+    if (isOpen && currentUserId) {
+      fetchUsers();
+    } else if (!isOpen) {
+      setMode(prev => prev !== "select" ? "select" : prev);
+      setSearchQuery(prev => prev !== "" ? "" : prev);
+      setSelectedUsers(prev => prev.length ? [] : prev);
+      setGroupName(prev => prev !== "" ? "" : prev);
+    }
+  }, [isOpen, currentUser?.id, fetchUsers]);
+  
+
+  // Early return after all hooks are called
+  const currentUserId = currentUser?.id;
+  if (!currentUserId) {
+    return null; // Or show loading state
+  }
+
+
 
   const filteredUsers = users.filter(
     (user) =>

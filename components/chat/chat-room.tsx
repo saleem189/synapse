@@ -5,6 +5,9 @@
 
 "use client";
 
+const EMPTY_MESSAGES: any[] = [];
+
+
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -103,7 +106,10 @@ export function ChatRoom({
 
   // Use selector with fallback to prevent undefined issues
   // Zustand does reference equality, but we ensure array is always defined
-  const messages = useMessagesStore((state) => state.messagesByRoom[roomId] || []);
+  // Use selector with stable return value to avoid infinite loops
+  const storedMessages = useMessagesStore((state) => state.messagesByRoom[roomId]);
+  const messages = storedMessages || EMPTY_MESSAGES;
+
 
   // Destructure actions - these are stable references, won't cause re-renders
   const setMessages = useMessagesStore((state) => state.setMessages);
@@ -200,7 +206,7 @@ export function ChatRoom({
   }, [displayMessages.length, roomId]);
 
   useEffect(() => {
-    if (initialMessages.length > 0 && !messages) {
+    if (initialMessages.length > 0 && messages.length === 0) {
       setMessages(roomId, initialMessages);
     }
   }, [roomId, initialMessages, messages, setMessages]);
