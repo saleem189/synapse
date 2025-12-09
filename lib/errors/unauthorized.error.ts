@@ -9,7 +9,7 @@ export class UnauthorizedError extends AppError {
   statusCode = 401;
   code = 'UNAUTHORIZED';
 
-  constructor(message: string = 'Unauthorized', details?: any) {
+  constructor(message: string = 'Unauthorized', details?: unknown) {
     super(message, details);
   }
 }

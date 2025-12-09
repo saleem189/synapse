@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 // Sentry webpack plugin will be added automatically if @sentry/nextjs is installed
 // Run: npx @sentry/wizard@latest -i nextjs
+
+// Bundle analyzer configuration
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 const nextConfig = {
   // Enable React Strict Mode for better development experience
   reactStrictMode: true,
@@ -141,16 +147,15 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
-
-
-
 // Injected content via Sentry wizard below
 
 const { withSentryConfig } = require("@sentry/nextjs");
 
+// Wrap with bundle analyzer first, then Sentry
+const configWithAnalyzer = withBundleAnalyzer(nextConfig);
+
 module.exports = withSentryConfig(
-  module.exports,
+  configWithAnalyzer,
   {
     // For all available options, see:
     // https://www.npmjs.com/package/@sentry/webpack-plugin#options

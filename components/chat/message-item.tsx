@@ -16,6 +16,7 @@ import { ReadReceipts } from "./read-receipts";
 import { MessageActions } from "./message-actions";
 import { MessageTime } from "./message-time";
 import { LinkPreview } from "./link-preview";
+import { ChatRoomContextMenu } from "./chat-room-context-menu";
 import { parseFormattedText, renderFormattedText } from "@/lib/text-formatter";
 import { sanitizeMessageContent } from "@/lib/sanitize";
 import { getFirstUrl } from "@/lib/url-detector";
@@ -35,7 +36,6 @@ interface MessageItemProps {
   onEdit: (messageId: string, content: string) => void;
   onDelete: (messageId: string) => void;
   onReactionChange: () => void;
-  onContextMenu: (e: React.MouseEvent, message: Message) => void;
   createLongPressHandlers: (message: Message) => any;
 }
 
@@ -53,25 +53,31 @@ export const MessageItem = memo(function MessageItem({
   onEdit,
   onDelete,
   onReactionChange,
-  onContextMenu,
   createLongPressHandlers,
 }: MessageItemProps) {
   return (
-    <motion.div
-      key={message.id}
-      data-message-id={message.id}
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ 
-        duration: 0.2,
-        ease: "easeOut"
-      }}
-      className={cn(
-        "flex items-end gap-2.5",
-        isSent ? "justify-end" : "justify-start",
-        spacing
-      )}
+    <ChatRoomContextMenu
+      message={message}
+      currentUserId={currentUserId}
+      onReply={onReply}
+      onEdit={onEdit}
+      onDelete={onDelete}
     >
+      <motion.div
+        key={message.id}
+        data-message-id={message.id}
+        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ 
+          duration: 0.2,
+          ease: "easeOut"
+        }}
+        className={cn(
+          "flex items-end gap-2.5",
+          isSent ? "justify-end" : "justify-start",
+          spacing
+        )}
+      >
       {/* Avatar (for received messages) */}
       {!isSent && (
         <div className="w-8 flex-shrink-0">
@@ -98,7 +104,6 @@ export const MessageItem = memo(function MessageItem({
         {/* Bubble Container */}
         <div 
           className="relative group"
-          onContextMenu={(e) => onContextMenu(e, message)}
           {...createLongPressHandlers(message)}
         >
           {/* Bubble */}
@@ -213,7 +218,7 @@ export const MessageItem = memo(function MessageItem({
               <div className={cn(
                 message.fileUrl && (message.fileType?.startsWith("image/") || message.fileType?.startsWith("video/") || message.fileType?.startsWith("audio/"))
                   ? "px-3 pb-2 pt-1.5"
-                  : message.replyTo ? "mt-0" : ""
+                  : message.replyTo ? "mt-0 pb-0" : "pb-0"
               )}>
                 <div className={cn(
                   "text-sm leading-relaxed whitespace-pre-wrap break-words"
@@ -252,33 +257,45 @@ export const MessageItem = memo(function MessageItem({
               </p>
             )}
 
-            {/* Timestamp and Read Receipt - Inside bubble for text, overlay for media */}
-            <div className={cn(
-              "flex items-center gap-1.5",
-              message.fileUrl && (message.fileType?.startsWith("image/") || message.fileType?.startsWith("video/"))
-                ? "absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm text-white"
-                : "mt-1.5"
-            )}>
-              <p
-                className={cn(
-                  "text-[10px] font-medium",
-                  !message.fileUrl || (!message.fileType?.startsWith("image/") && !message.fileType?.startsWith("video/") && !message.fileType?.startsWith("audio/"))
-                    ? isSent
+            {/* Timestamp and Read Receipt - Below message content */}
+            {!message.fileUrl || (!message.fileType?.startsWith("image/") && !message.fileType?.startsWith("video/")) ? (
+              <div className={cn(
+                "flex items-center gap-1.5 -mt-0.5",
+                isSent ? "justify-end" : "justify-start"
+              )}>
+                <p
+                  className={cn(
+                    "text-[10px] font-medium",
+                    isSent
                       ? "text-primary-100/90"
                       : "text-surface-500 dark:text-surface-400"
-                    : "text-white/90"
+                  )}
+                >
+                  <MessageTime timestamp={message.createdAt} />
+                </p>
+                {isSent && (
+                  <ReadReceipts
+                    isSent={isSent}
+                    isRead={message.isRead || false}
+                    isDelivered={message.isDelivered || false}
+                  />
                 )}
-              >
-                <MessageTime timestamp={message.createdAt} />
-              </p>
-              {isSent && (
-                <ReadReceipts
-                  isSent={isSent}
-                  isRead={message.isRead || false}
-                  isDelivered={message.isDelivered || false}
-                />
-              )}
-            </div>
+              </div>
+            ) : (
+              /* For media messages, overlay timestamp and receipt */
+              <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm text-white flex items-center gap-1.5">
+                <p className="text-[10px] font-medium text-white/90">
+                  <MessageTime timestamp={message.createdAt} />
+                </p>
+                {isSent && (
+                  <ReadReceipts
+                    isSent={isSent}
+                    isRead={message.isRead || false}
+                    isDelivered={message.isDelivered || false}
+                  />
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -300,6 +317,7 @@ export const MessageItem = memo(function MessageItem({
         )}
       </div>
     </motion.div>
+    </ChatRoomContextMenu>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison function for React.memo

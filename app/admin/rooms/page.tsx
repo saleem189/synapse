@@ -22,7 +22,6 @@ const RoomsTable = dynamic(
         </div>
       </div>
     ),
-    ssr: false, // Table is client-side only
   }
 );
 

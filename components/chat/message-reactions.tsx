@@ -9,6 +9,7 @@ import { Smile, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket";
 import { apiClient } from "@/lib/api-client";
+import type { MessageReactions } from "@/lib/types";
 
 interface MessageReactionsProps {
   messageId: string;
@@ -42,7 +43,7 @@ export function MessageReactions({
       });
 
       // Fetch updated reactions
-      const data = await apiClient.get<{ reactions: any }>(`/messages/${messageId}/reactions`, {
+      const data = await apiClient.get<{ reactions: MessageReactions }>(`/messages/${messageId}/reactions`, {
         showErrorToast: false,
       });
       
@@ -106,7 +107,7 @@ export function MessageReactions({
             "w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200",
             "hover:scale-110 active:scale-95",
             isSent
-              ? "bg-white/10 border border-white/20 text-white/90 hover:bg-white/20 backdrop-blur-sm"
+              ? "bg-primary-500/20 border border-primary-400/30 text-primary-700 dark:text-primary-200 hover:bg-primary-500/30 backdrop-blur-sm"
               : "bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-500 hover:text-surface-700 dark:hover:text-surface-300"
           )}
           title="Add reaction"

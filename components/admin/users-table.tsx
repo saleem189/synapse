@@ -17,6 +17,24 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { cn, getInitials, formatMessageTime } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 interface User {
@@ -42,6 +60,8 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   // Use centralized online users hook
   const { onlineUserIds } = useOnlineUsers();
@@ -70,13 +90,20 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
   };
 
   // Delete user
-  const deleteUser = async (userId: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+  const handleDeleteClick = (userId: string) => {
+    setUserToDelete(userId);
+    setDeleteDialogOpen(true);
+  };
 
-    setIsLoading(userId);
+  const deleteUser = async () => {
+    if (!userToDelete) return;
+
+    setIsLoading(userToDelete);
     try {
-      await apiClient.delete(`/admin/users?userId=${userId}`);
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      await apiClient.delete(`/admin/users?userId=${userToDelete}`);
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete));
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     } catch (error) {
       console.error("Failed to delete user:", error);
     } finally {
@@ -102,43 +129,43 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-surface-50 dark:bg-surface-800/50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 User
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Role
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Messages
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Rooms
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Joined
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-right text-xs font-semibold text-surface-500 uppercase">
                 Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-200 dark:divide-surface-800">
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredUsers.map((user) => {
               const isOnline = onlineUserIds.has(user.id);
 
               return (
-                <tr
+                <TableRow
                   key={user.id}
                   className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors"
                 >
                   {/* User */}
-                  <td className="px-4 py-3">
+                  <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-blue-500 flex items-center justify-center text-white font-semibold text-sm">
@@ -155,10 +182,10 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                         <p className="text-xs text-surface-500">{user.email}</p>
                       </div>
                     </div>
-                  </td>
+                  </TableCell>
 
                   {/* Status */}
-                  <td className="px-4 py-3">
+                  <TableCell>
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
@@ -175,10 +202,10 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                       />
                       {isOnline ? "Online" : "Offline"}
                     </span>
-                  </td>
+                  </TableCell>
 
                   {/* Role */}
-                  <td className="px-4 py-3">
+                  <TableCell>
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
@@ -190,25 +217,25 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                       {user.role === "ADMIN" && <Shield className="w-3 h-3" />}
                       {user.role}
                     </span>
-                  </td>
+                  </TableCell>
 
                   {/* Messages */}
-                  <td className="px-4 py-3 text-surface-600 dark:text-surface-300">
+                  <TableCell className="text-surface-600 dark:text-surface-300">
                     {user._count.messages}
-                  </td>
+                  </TableCell>
 
                   {/* Rooms */}
-                  <td className="px-4 py-3 text-surface-600 dark:text-surface-300">
+                  <TableCell className="text-surface-600 dark:text-surface-300">
                     {user._count.rooms}
-                  </td>
+                  </TableCell>
 
                   {/* Joined */}
-                  <td className="px-4 py-3 text-sm text-surface-500">
+                  <TableCell className="text-sm text-surface-500">
                     {formatMessageTime(user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt)}
-                  </td>
+                  </TableCell>
 
                   {/* Actions */}
-                  <td className="px-4 py-3">
+                  <TableCell>
                     <div className="flex items-center justify-end gap-1 relative">
                       <button
                         onClick={() =>
@@ -238,7 +265,7 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                               : "Make Admin"}
                           </button>
                           <button
-                            onClick={() => deleteUser(user.id)}
+                            onClick={() => handleDeleteClick(user.id)}
                             disabled={isLoading === user.id}
                             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                           >
@@ -248,12 +275,12 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                         </div>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {filteredUsers.length === 0 && (
@@ -261,6 +288,27 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
           No users found
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this user? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteUser}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

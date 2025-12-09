@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn, getInitials, formatChatListTime } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -45,7 +46,8 @@ import { useSocket } from "@/hooks/use-socket";
 import { useQueryApi } from "@/hooks/use-react-query";
 import { useOnlineUsers } from "@/hooks";
 import { useRoomsStore, useUserStore, useUIStore } from "@/lib/store";
-import type { RoomResponse } from "@/lib/types";
+import type { RoomResponse, Participant } from "@/lib/types";
+import type { MessagePayload } from "@/lib/socket";
 import type { UserStatus } from "@/lib/types/user.types";
 
 interface ChatRoomItem {
@@ -61,7 +63,7 @@ interface ChatRoomItem {
     id: string;
     name: string;
     avatar?: string | null;
-    status: string;
+    status?: string;
   }[];
   unreadCount?: number;
 }
@@ -138,7 +140,7 @@ export function ChatSidebar() {
     if (!socket || !user) return;
 
     // MAIN: Listen for ALL messages to update sidebar
-    const handleReceiveMessage = (message: any) => {
+    const handleReceiveMessage = (message: MessagePayload) => {
       logger.log("📩 SIDEBAR: Received message", { messageId: message.id, roomId: message.roomId });
 
       // Check if room exists in store (use ref)
@@ -233,18 +235,18 @@ export function ChatSidebar() {
   };
 
   // Get display name for room (for DMs show other user's name)
-  const getRoomDisplayName = (room: ChatRoomItem | any) => {
+  const getRoomDisplayName = (room: ChatRoomItem) => {
     if (room.isGroup) return room.name;
-    const otherUser = room.participants?.find((p: any) => p.id !== user.id);
+    const otherUser = room.participants?.find((p: { id: string }) => p.id !== user.id);
     return otherUser?.name || room.name;
   };
 
   // Check if other user is online
-  const isRoomOnline = (room: ChatRoomItem | any) => {
+  const isRoomOnline = (room: ChatRoomItem) => {
     if (room.isGroup) {
-      return room.participants?.some((p: any) => p.id !== user.id && onlineUsers.has(p.id)) || false;
+      return room.participants?.some((p: { id: string }) => p.id !== user.id && onlineUsers.has(p.id)) || false;
     }
-    const otherUser = room.participants?.find((p: any) => p.id !== user.id);
+    const otherUser = room.participants?.find((p: { id: string }) => p.id !== user.id);
     return otherUser ? onlineUsers.has(otherUser.id) : false;
   };
 
@@ -349,7 +351,7 @@ export function ChatSidebar() {
         </div>
 
         {/* Rooms List */}
-        <div className="flex-1 overflow-y-auto px-3 pb-3">
+        <ScrollArea className="flex-1 px-3 pb-3">
           {isLoading ? (
             <div className="space-y-2 p-2">
               {[...Array(5)].map((_, i) => (
@@ -451,7 +453,7 @@ export function ChatSidebar() {
               })}
             </div>
           )}
-        </div>
+        </ScrollArea>
 
         {/* User Profile */}
         <Separator />

@@ -15,7 +15,7 @@ interface LogEntry {
   messageId?: string;
   roomId?: string;
   senderId?: string;
-  details: any;
+  details: Record<string, unknown>;
 }
 
 /**
@@ -173,7 +173,7 @@ export function logError(
   messageId: string | undefined,
   roomId: string | undefined,
   error: Error | string,
-  context?: any
+  context?: Record<string, unknown>
 ): void {
   writeLog({
     timestamp: new Date().toISOString(),

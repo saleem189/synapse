@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -84,6 +85,9 @@ export function MessageEditModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Message</DialogTitle>
+          <DialogDescription>
+            Make changes to your message. Press Enter to save or Esc to cancel.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

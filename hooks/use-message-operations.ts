@@ -152,7 +152,7 @@ export function useMessageOperations({
         // Queue the message immediately
         queueAction({
           type: "send-message",
-          payload: messagePayload,
+          payload: messagePayload as unknown as Record<string, unknown>,
         });
       } else {
         // Emit via socket for immediate broadcast (optimistic)
@@ -262,7 +262,7 @@ export function useMessageOperations({
           // We thought we were online but got a network error, queue it
           queueAction({
             type: "send-message",
-            payload: messagePayload,
+            payload: messagePayload as unknown as Record<string, unknown>,
           });
           return; // Don't mark as failed, it's queued
         }

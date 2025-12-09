@@ -4,9 +4,11 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
@@ -22,23 +24,6 @@ const EMOJI_CATEGORIES = {
 
 export function EmojiPicker({ onEmojiSelect }: EmojiPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
 
   const handleEmojiClick = (emoji: string) => {
     onEmojiSelect(emoji);
@@ -46,24 +31,28 @@ export function EmojiPicker({ onEmojiSelect }: EmojiPickerProps) {
   };
 
   return (
-    <div className="relative" ref={pickerRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-          isOpen
-            ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-            : "hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
-        )}
-        title="Add emoji"
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+            isOpen
+              ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
+              : "hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
+          )}
+          title="Add emoji"
+        >
+          <Smile className="w-5 h-5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent 
+        side="top" 
+        align="end"
+        className="w-80 p-4 bg-white dark:bg-surface-900 rounded-2xl shadow-2xl border border-surface-200 dark:border-surface-800"
       >
-        <Smile className="w-5 h-5" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute bottom-full right-0 mb-2 w-80 bg-white dark:bg-surface-900 rounded-2xl shadow-2xl border border-surface-200 dark:border-surface-800 p-4 z-50 animate-scale-in">
-          <div className="max-h-64 overflow-y-auto">
+        <ScrollArea className="h-64">
+          <div className="pr-2">
             {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
               <div key={category} className="mb-4">
                 <div className="text-xs font-semibold text-surface-500 mb-2 px-2">
@@ -83,9 +72,9 @@ export function EmojiPicker({ onEmojiSelect }: EmojiPickerProps) {
               </div>
             ))}
           </div>
-        </div>
-      )}
-    </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 }
 

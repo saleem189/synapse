@@ -5,9 +5,11 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Zap, Search, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { createPortal } from "react-dom";
 import type { QuickReplyTemplate } from "./types";
 
 interface QuickReplyPickerProps {
@@ -23,6 +25,8 @@ export function QuickReplyPicker({
 }: QuickReplyPickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [position, setPosition] = useState({ top: 0, right: 0 });
+    const triggerRef = useRef<HTMLButtonElement>(null);
 
     // Filter templates by search query
     const filteredTemplates = useMemo(() => {
@@ -52,10 +56,24 @@ export function QuickReplyPicker({
         setSearchQuery("");
     };
 
+    // Calculate position when opening
+    useEffect(() => {
+        if (isOpen && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            // Position above the button (bottom-full)
+            const dropdownHeight = 320; // Approximate height of dropdown
+            setPosition({
+                top: rect.top - dropdownHeight - 8, // 8px = mb-2 spacing
+                right: window.innerWidth - rect.right,
+            });
+        }
+    }, [isOpen]);
+
     return (
-        <div className="relative">
+        <>
             {/* Trigger Button */}
             <button
+                ref={triggerRef}
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
@@ -69,19 +87,25 @@ export function QuickReplyPicker({
                 <Zap className="w-5 h-5" />
             </button>
 
-            {/* Dropdown */}
-            {isOpen && (
+            {/* Dropdown - Portal to body for proper z-index stacking */}
+            {isOpen && typeof window !== 'undefined' && createPortal(
                 <>
                     <div
-                        className="fixed inset-0 z-40"
+                        className="fixed inset-0 z-[90]"
                         onClick={() => setIsOpen(false)}
                     />
-                    <div className={cn(
-                        "absolute bottom-full right-0 mb-2 w-80",
-                        "bg-white dark:bg-surface-900 rounded-2xl shadow-2xl",
-                        "border border-surface-200 dark:border-surface-800",
-                        "z-50 animate-scale-in overflow-hidden"
-                    )}>
+                    <div 
+                        className={cn(
+                            "fixed w-80",
+                            "bg-white dark:bg-surface-900 rounded-2xl shadow-2xl",
+                            "border border-surface-200 dark:border-surface-800",
+                            "z-[100] animate-scale-in overflow-hidden"
+                        )}
+                        style={{
+                            top: `${position.top}px`,
+                            right: `${position.right}px`,
+                        }}
+                    >
                         {/* Search */}
                         <div className="p-3 border-b border-surface-200 dark:border-surface-800">
                             <div className="relative">
@@ -102,7 +126,7 @@ export function QuickReplyPicker({
                         </div>
 
                         {/* Templates List */}
-                        <div className="max-h-64 overflow-y-auto p-2">
+                        <ScrollArea className="h-64 p-2">
                             {Object.entries(groupedTemplates).map(([category, items]) => (
                                 <div key={category} className="mb-3 last:mb-0">
                                     <p className="text-xs font-semibold text-surface-500 px-2 py-1">
@@ -140,7 +164,7 @@ export function QuickReplyPicker({
                                     No templates found
                                 </p>
                             )}
-                        </div>
+                        </ScrollArea>
 
                         {/* Create New Button */}
                         {onCreateNew && (
@@ -162,8 +186,9 @@ export function QuickReplyPicker({
                             </div>
                         )}
                     </div>
-                </>
+                </>,
+                document.body
             )}
-        </div>
+        </>
     );
 }

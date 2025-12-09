@@ -298,9 +298,10 @@ export class MessageRepository extends BaseRepository<
         });
         
         return; // Success
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Retry on unique constraint violation (race condition)
-        if (error?.code === 'P2002' && retries < maxRetries - 1) {
+        const prismaError = error as { code?: string };
+        if (prismaError?.code === 'P2002' && retries < maxRetries - 1) {
           retries++;
           // Exponential backoff: 10ms, 20ms, 30ms
           await new Promise(resolve => setTimeout(resolve, 10 * retries));

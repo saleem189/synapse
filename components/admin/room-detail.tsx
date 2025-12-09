@@ -9,7 +9,18 @@ import { ArrowLeft, Hash, Users, MessageSquare, Trash2, Calendar } from "lucide-
 import { getInitials, formatMessageTime } from "@/lib/utils";
 import { useOnlineUsers } from "@/hooks/use-online-users";
 import { useSocket } from "@/hooks/use-socket";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import type { MessagePayload } from "@/lib/socket";
 
 interface Room {
   id: string;
@@ -53,6 +64,7 @@ interface RoomDetailProps {
 export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
   const [room, setRoom] = useState(initialRoom);
   const [liveMessages, setLiveMessages] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   // Use centralized online users hook
   const { onlineUserIds } = useOnlineUsers();
@@ -70,7 +82,7 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
   useEffect(() => {
     if (!socket) return;
 
-    const handleReceiveMessage = (message: any) => {
+    const handleReceiveMessage = (message: MessagePayload) => {
       if (message.roomId === room.id) {
         setLiveMessages((prev) => prev + 1);
         setRoom((prev) => ({
@@ -260,11 +272,7 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
               Actions
             </h3>
             <button
-              onClick={() => {
-                if (confirm("Delete this room? All messages will be lost.")) {
-                  // Handle delete
-                }
-              }}
+              onClick={() => setDeleteDialogOpen(true)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
@@ -273,6 +281,28 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
           </div>
         </div>
       </div>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Room</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this room? All messages will be lost. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                // Handle delete
+                setDeleteDialogOpen(false);
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

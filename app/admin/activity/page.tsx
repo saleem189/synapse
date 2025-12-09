@@ -17,6 +17,7 @@ import {
 import { RelativeTime } from "@/components/admin/relative-time";
 import { useOnlineUsers, useSocket } from "@/hooks";
 import { logger } from "@/lib/logger";
+import type { MessagePayload } from "@/lib/socket";
 
 
 interface ActivityItem {
@@ -75,7 +76,7 @@ export default function ActivityPage() {
       });
     };
 
-    const handleReceiveMessage = (message: any) => {
+    const handleReceiveMessage = (message: MessagePayload) => {
       logger.log("💬 Activity Feed: Message received", { messageId: message.id, roomId: message.roomId });
       setMessageCount((prev) => prev + 1);
       setActiveRooms((prev) => new Set([...prev, message.roomId]));

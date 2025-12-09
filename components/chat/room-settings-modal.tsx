@@ -12,6 +12,7 @@ import { apiClient } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -81,6 +82,9 @@ export function RoomSettingsModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Room Settings</DialogTitle>
+          <DialogDescription>
+            Update the room name, description, and avatar.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

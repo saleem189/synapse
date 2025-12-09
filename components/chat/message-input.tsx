@@ -24,6 +24,8 @@ import {
   QuickReplyPicker,
   type QuickReplyTemplate,
   DEFAULT_QUICK_REPLIES,
+  mentionsToDisplayText,
+  MENTION_DISPLAY_REGEX,
 } from "@/features";
 
 interface MessageInputProps {
@@ -56,6 +58,11 @@ export function MessageInput({
   quickReplyTemplates,
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
+  
+  // Convert message to display format (mentions: @[Name](id) -> @Name)
+  const displayMessage = useMemo(() => {
+    return mentionsToDisplayText(message);
+  }, [message]);
   const [selectedFile, setSelectedFile] = useState<{
     url: string;
     fileName: string;
@@ -112,18 +119,35 @@ export function MessageInput({
     }, 2000)
   ).current;
 
-  // Handle input change
+  // Handle input change - convert display format back to raw format
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
+    const newDisplayValue = e.target.value;
     const cursorPos = e.target.selectionStart;
+    
+    // Convert display format back to raw format
+    // Find mentions in original message and restore them in new value
+    const originalMentions = message.match(MENTION_DISPLAY_REGEX) || [];
+    let newRawValue = newDisplayValue;
+    
+    // For each mention in original, find @Username in new value and replace with raw format
+    originalMentions.forEach((mention) => {
+      const match = mention.match(/@\[([^\]]+)\]\(([^)]+)\)/);
+      if (match) {
+        const [, name, userId] = match;
+        // Replace @name (not already in mention format) with @[name](userId)
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const displayPattern = new RegExp(`@${escapedName}(?!\\[)`, 'g');
+        newRawValue = newRawValue.replace(displayPattern, mention);
+      }
+    });
 
-    setMessage(newValue);
+    setMessage(newRawValue);
 
     // Check for mention trigger
-    handleMentionTextChange(newValue, cursorPos);
+    handleMentionTextChange(newRawValue, cursorPos);
 
     // Check for quick reply shortcut (e.g., /thanks)
-    const shortcut = detectShortcut(newValue);
+    const shortcut = detectShortcut(newRawValue);
     if (shortcut) {
       const template = getTemplateByShortcut(shortcut, templates);
       if (template) {
@@ -134,7 +158,7 @@ export function MessageInput({
     }
 
     // Emit typing event
-    if (newValue.trim() && !isTypingRef.current) {
+    if (newRawValue.trim() && !isTypingRef.current) {
       isTypingRef.current = true;
       onTyping(true);
     }
@@ -473,7 +497,7 @@ export function MessageInput({
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
-            value={message}
+            value={displayMessage}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onBlur={() => setTimeout(closeMentions, 200)}

@@ -104,11 +104,11 @@ export function setContext(key: string, context: Record<string, unknown>) {
 /**
  * Wrap async function with error tracking
  */
-export function withErrorTracking<T extends (...args: any[]) => Promise<any>>(
+export function withErrorTracking<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   context?: string
 ): T {
-  return (async (...args: any[]) => {
+  return (async (...args: unknown[]) => {
     try {
       return await fn(...args);
     } catch (error) {

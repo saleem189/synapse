@@ -13,12 +13,24 @@ import { cn, getInitials } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +50,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<"profile" | "notifications" | "appearance">("profile");
   const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
   const [isUploading, setIsUploading] = useState(false);
+  const [removeAvatarDialogOpen, setRemoveAvatarDialogOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -92,11 +105,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleRemoveAvatar = async () => {
-    if (!confirm("Remove profile picture?")) return;
-
     try {
       await apiClient.delete("/users/avatar");
       setAvatar(null);
+      setRemoveAvatarDialogOpen(false);
       // Refresh to update avatar everywhere (better than full reload)
       if (typeof window !== 'undefined') {
         window.location.reload(); // TODO: Replace with proper state update
@@ -112,6 +124,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-surface-200 dark:border-surface-800">
           <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>
+            Manage your profile, notifications, and appearance preferences.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex h-[500px] overflow-hidden">
@@ -157,7 +172,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
 
           {/* Content */}
-          <div className="flex-1 p-6 overflow-y-auto">
+          <ScrollArea className="flex-1 p-6">
             {activeTab === "profile" && (
               <div className="space-y-6">
                 <div>
@@ -196,7 +211,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           </button>
                           {avatar && (
                             <button
-                              onClick={handleRemoveAvatar}
+                              onClick={() => setRemoveAvatarDialogOpen(true)}
                               disabled={isUploading}
                               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
                             >
@@ -344,7 +359,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
               </div>
             )}
-          </div>
+          </ScrollArea>
         </div>
 
         {/* Footer */}
@@ -362,6 +377,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </Button>
         </div>
       </DialogContent>
+      <AlertDialog open={removeAvatarDialogOpen} onOpenChange={setRemoveAvatarDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Profile Picture</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove your profile picture? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveAvatar}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

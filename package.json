@@ -26,6 +26,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "analyze": "cross-env ANALYZE=true next build --webpack",
+    "analyze:server": "cross-env BUNDLE_ANALYZE=server ANALYZE=true next build --webpack",
+    "analyze:browser": "cross-env BUNDLE_ANALYZE=browser ANALYZE=true next build --webpack",
     "postinstall": "prisma generate"
   },
   "prisma": {
@@ -66,6 +69,7 @@
     "express-rate-limit": "^8.2.1",
     "framer-motion": "^12.23.25",
     "ioredis": "^5.8.2",
+    "jsdom": "^27.3.0",
     "lucide-react": "^0.555.0",
     "next": "^16.0.7",
     "next-auth": "^4.24.13",
@@ -83,10 +87,17 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "web-push": "^3.6.7",
-    "zod": "^4.1.13",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@next/bundle-analyzer": "^16.0.8",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-checkbox": "^1.3.3",
+    "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@tanstack/react-table": "^8.21.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -100,15 +111,18 @@
     "@typescript-eslint/parser": "^8.20.0",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.18.0",
     "eslint-config-next": "^16.0.7",
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "postcss": "^8.4.45",
     "prisma": "^6.15.0",
+    "react-hook-form": "^7.68.0",
     "server-only": "^0.0.1",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^4.1.13"
   }
 }

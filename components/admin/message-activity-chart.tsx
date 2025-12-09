@@ -139,13 +139,16 @@ export function MessageActivityChart() {
           <Bar
             dataKey="messages"
             radius={[8, 8, 0, 0]}
-            label={({ value, x, y, width, height }: any) => {
+            label={((props: unknown) => {
+              // Type assertion for Recharts label props
+              const labelProps = props as { value?: number | string; x?: number; y?: number; width?: number; height?: number };
               // Only show label if value is greater than 0
-              if (value > 0) {
+              const value = typeof labelProps.value === 'number' ? labelProps.value : 0;
+              if (value > 0 && labelProps.x !== undefined && labelProps.y !== undefined && labelProps.width !== undefined) {
                 return (
                   <text
-                    x={x + width / 2}
-                    y={y - 5}
+                    x={labelProps.x + labelProps.width / 2}
+                    y={labelProps.y - 5}
                     fill="#6b7280"
                     textAnchor="middle"
                     fontSize={11}
@@ -156,7 +159,7 @@ export function MessageActivityChart() {
                 );
               }
               return null;
-            }}
+            }) as never}
           >
             {dataWithLive.map((entry, index) => (
               <Cell

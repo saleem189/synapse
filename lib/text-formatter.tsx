@@ -7,9 +7,10 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 export interface FormattedText {
-  type: "text" | "bold" | "italic" | "code" | "link";
+  type: "text" | "bold" | "italic" | "code" | "link" | "mention";
   content: string;
   url?: string;
+  userId?: string;
 }
 
 /**
@@ -22,6 +23,18 @@ export function parseFormattedText(text: string): FormattedText[] {
   const textLength = text.length;
 
   while (currentIndex < textLength) {
+    // Check for mentions @[Username](userId)
+    const mentionMatch = text.substring(currentIndex).match(/^@\[([^\]]+)\]\(([^)]+)\)/);
+    if (mentionMatch) {
+      if (currentIndex > 0) {
+        parts.push({ type: "text", content: text.substring(0, currentIndex) });
+      }
+      parts.push({ type: "mention", content: mentionMatch[1], userId: mentionMatch[2] });
+      text = text.substring(currentIndex + mentionMatch[0].length);
+      currentIndex = 0;
+      continue;
+    }
+
     // Check for code blocks (backticks)
     const codeMatch = text.substring(currentIndex).match(/^`([^`]+)`/);
     if (codeMatch) {
@@ -130,6 +143,18 @@ export function renderFormattedText(
           >
             {part.content}
           </a>
+        );
+      case "mention":
+        return (
+          <span
+            key={index}
+            className={cn(
+              "font-semibold text-primary-600 dark:text-primary-400",
+              className
+            )}
+          >
+            @{part.content}
+          </span>
         );
       default:
         return <span key={index}>{part.content}</span>;

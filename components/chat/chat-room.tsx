@@ -5,7 +5,7 @@
 
 "use client";
 
-const EMPTY_MESSAGES: any[] = [];
+const EMPTY_MESSAGES: MessagePayload[] = [];
 
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -27,23 +27,27 @@ import { cn, debounce, getInitials } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
+// Command components no longer needed here (moved to ChatRoomSearchDialog)
 import { MessageInput } from "./message-input";
 import { TypingIndicator } from "./typing-indicator";
 import { RoomMenu } from "./room-menu";
-import { RoomSettingsModal } from "./room-settings-modal";
 import { RoomMembersPanel } from "./room-members-panel";
-import { MessageEditModal } from "./message-edit-modal";
 import { ChatRoomHeader } from "./chat-room-header";
 import { MessageItem } from "./message-item";
+import { ChatRoomSearchDialog } from "./chat-room-search-dialog";
+import dynamic from "next/dynamic";
+
+// Lazy load heavy modals for better initial load performance
+const RoomSettingsModal = dynamic(
+  () => import("./room-settings-modal").then((mod) => ({ default: mod.RoomSettingsModal })),
+  { ssr: false }
+);
+
+const MessageEditModal = dynamic(
+  () => import("./message-edit-modal").then((mod) => ({ default: mod.MessageEditModal })),
+  { ssr: false }
+);
 import { MessageListErrorBoundary, MessageInputErrorBoundary } from "@/components/error-boundary";
 import { type MessagePayload } from "@/lib/socket";
 import { apiClient } from "@/lib/api-client";
@@ -54,7 +58,7 @@ import { useMessageQueue } from "@/hooks/use-message-queue";
 import { useOptimisticMessages } from "@/hooks/use-optimistic-messages";
 import { logger } from "@/lib/logger";
 import { createMessageFromPayload } from "@/lib/utils/message-helpers";
-import type { Message } from "@/lib/types/message.types";
+import type { Message, MessageReactions } from "@/lib/types/message.types";
 import { VirtualizedMessageList } from "./virtualized-message-list";
 // Features
 import { PinnedMessagesPanel, type MentionableUser } from "@/features";
@@ -230,7 +234,6 @@ export function ChatRoom({
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: Message } | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
   // Convert participants to mentionable users format
@@ -286,10 +289,11 @@ export function ChatRoom({
           messageIds,
         }, {
           showErrorToast: false, // Don't show toast for read receipts
-        }).catch((error: any) => {
+        }).catch((error: unknown) => {
           // Silently ignore errors - batch API handles duplicates gracefully
           // Only log unexpected errors
-          if (error?.status !== 404 && error?.code !== 'P2002') {
+          const apiError = error as { status?: number; code?: string };
+          if (apiError?.status !== 404 && apiError?.code !== 'P2002') {
             logger.error("Error marking messages as read:", error);
           }
         });
@@ -607,15 +611,15 @@ export function ChatRoom({
                 userId: currentUser.id,
                 roomId: roomId,
               });
-            }).catch((error: any) => {
+            }).catch((error: unknown) => {
               // Silently ignore 404 errors (temp IDs don't exist in DB yet)
               // Check both status code and error message
-              const is404 = error?.status === 404 ||
-                error?.message?.includes("404") ||
-                error?.message?.includes("Message not found") ||
-                error?.message?.includes("not found") ||
-                String(error || '').includes("404") ||
-                String(error || '').includes("Message not found");
+              const apiError = error as { status?: number; message?: string };
+              const errorMessage = apiError?.message || String(error || '');
+              const is404 = apiError?.status === 404 ||
+                errorMessage.includes("404") ||
+                errorMessage.includes("Message not found") ||
+                errorMessage.includes("not found");
 
               if (!is404) {
                 logger.error("Error marking message as read:", error);
@@ -799,13 +803,6 @@ export function ChatRoom({
   }, [roomId, currentUserId, socket, isConnected]); // Only roomId and currentUserId in dependencies - handlers use refs for other values
 
   // Close context menu
-  useEffect(() => {
-    const handleClick = () => setContextMenu(null);
-    if (contextMenu) {
-      document.addEventListener("click", handleClick);
-      return () => document.removeEventListener("click", handleClick);
-    }
-  }, [contextMenu]);
 
   // All hooks must be called before any early returns
   // Handle message send - memoized
@@ -845,15 +842,6 @@ export function ChatRoom({
     }, TIMEOUTS.SCROLL_DELAY);
   }, []);
 
-  // Handle right-click context menu
-  const handleContextMenu = (e: React.MouseEvent, message: Message) => {
-    e.preventDefault();
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      message,
-    });
-  };
 
   // Long-press handler for mobile - memoized
   const createLongPressHandlers = useCallback((message: Message) => {
@@ -1012,7 +1000,7 @@ export function ChatRoom({
                 onDelete={handleDeleteMessage}
                 onReactionChange={async (messageId: string) => {
                   try {
-                    const data = await apiClient.get<{ reactions: any }>(`/messages/${messageId}/reactions`, {
+                    const data = await apiClient.get<{ reactions: MessageReactions }>(`/messages/${messageId}/reactions`, {
                       showErrorToast: false,
                     });
                     if (data?.reactions) {
@@ -1022,7 +1010,6 @@ export function ChatRoom({
                     // Silently fail - reactions will update via socket
                   }
                 }}
-                onContextMenu={handleContextMenu}
                 createLongPressHandlers={createLongPressHandlers}
                 containerRef={messagesContainerRef}
               />
@@ -1075,7 +1062,7 @@ export function ChatRoom({
                           onDelete={handleDeleteMessage}
                           onReactionChange={async () => {
                             try {
-                              const data = await apiClient.get<{ reactions: any }>(`/messages/${message.id}/reactions`, {
+                              const data = await apiClient.get<{ reactions: MessageReactions }>(`/messages/${message.id}/reactions`, {
                                 showErrorToast: false,
                               });
                               updateMessage(roomId, message.id, { reactions: data.reactions });
@@ -1083,7 +1070,6 @@ export function ChatRoom({
                               logger.error("Error fetching reactions:", error);
                             }
                           }}
-                          onContextMenu={handleContextMenu}
                           createLongPressHandlers={createLongPressHandlers}
                         />
                       );
@@ -1105,7 +1091,7 @@ export function ChatRoom({
 
         {/* Info Panel */}
         {isInfoPanelOpen && (
-          <div className="w-72 border-l border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 overflow-y-auto">
+          <ScrollArea className="w-72 border-l border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
             <div className="p-4">
               {/* Room Info */}
               <div className="text-center mb-6">
@@ -1181,7 +1167,7 @@ export function ChatRoom({
                 </div>
               </div>
             </div>
-          </div>
+          </ScrollArea>
         )}
       </div>
 
@@ -1206,91 +1192,17 @@ export function ChatRoom({
         </div>
       </MessageInputErrorBoundary>
 
-      {/* Context Menu */}
-      {contextMenu && (
-        <div
-          className="fixed z-50 bg-white dark:bg-surface-800 rounded-lg shadow-xl border border-surface-200 dark:border-surface-700 py-1 min-w-[180px]"
-          style={{
-            left: `${contextMenu.x}px`,
-            top: `${contextMenu.y}px`,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => {
-              handleReplyToMessage(contextMenu.message);
-              setContextMenu(null);
-            }}
-            className="w-full px-4 py-2 text-left text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2"
-          >
-            <Reply className="w-4 h-4" />
-            <span>Reply</span>
-          </button>
-          {contextMenu.message.senderId === currentUser?.id && !contextMenu.message.isDeleted && (
-            <>
-              <button
-                onClick={() => {
-                  openMessageEditModal(contextMenu.message.id, contextMenu.message.content);
-                  setContextMenu(null);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={() => {
-                  handleDeleteMessage(contextMenu.message.id);
-                  setContextMenu(null);
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2"
-              >
-                <X className="w-4 h-4" />
-                <span>Delete</span>
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
       {/* Search Dialog */}
-      <CommandDialog open={showSearch} onOpenChange={setShowSearch}>
-        <CommandInput placeholder="Search messages..." />
-        <CommandList>
-          <CommandEmpty>No messages found.</CommandEmpty>
-          <CommandGroup heading="Messages">
-            {displayMessages
-              .filter((msg) =>
-                msg.content?.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((msg) => (
-                <CommandItem
-                  key={msg.id}
-                  onSelect={() => {
-                    // Scroll to message
-                    const messageElement = document.querySelector(
-                      `[data-message-id="${msg.id}"]`
-                    );
-                    if (messageElement) {
-                      messageElement.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                      setShowSearch(false);
-                    }
-                  }}
-                >
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{msg.senderName}</span>
-                    <span className="text-xs text-surface-500">
-                      {msg.content?.substring(0, 50)}...
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-          </CommandGroup>
-        </CommandList>
-      </CommandDialog>
+      <ChatRoomSearchDialog
+        isOpen={showSearch}
+        onOpenChange={setShowSearch}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        messages={displayMessages}
+        onSelectMessage={(messageId) => {
+          // Handler called by component, no additional action needed
+        }}
+      />
 
       {/* Room Settings Modal */}
       {isRoomSettingsModalOpen && roomData && (

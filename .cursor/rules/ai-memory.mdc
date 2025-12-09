@@ -1,9 +1,6 @@
 ---
-description: This rule defines how the AI agent should manage and utilize memory improve coding consistency.
-globs: *
-alwaysApply: false
+alwaysApply: true
 ---
-
 # AI Memory Rule
 
 This rule defines how the AI should manage and utilize its "memory" regarding this specific project, including user preferences, learned facts, and project-specific conventions.

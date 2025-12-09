@@ -15,7 +15,7 @@ import { logger } from '@/lib/logger';
  */
 class DistributedRateLimiter {
   private redisLimiter: RateLimiterRedis | null = null;
-  private memoryLimiter: any = null;
+  private memoryLimiter: Map<string, number[]> | null = null;
   private readonly maxRequests: number;
   private readonly windowMs: number;
   private readonly keyPrefix: string;
@@ -57,6 +57,9 @@ class DistributedRateLimiter {
     }
 
     // Fallback to in-memory
+    if (!this.memoryLimiter) {
+      this.memoryLimiter = new Map();
+    }
     const now = Date.now();
     const requests = this.memoryLimiter.get(identifier) || [];
     const validRequests = requests.filter((time: number) => now - time < this.windowMs);
@@ -84,6 +87,9 @@ class DistributedRateLimiter {
     }
 
     // Fallback
+    if (!this.memoryLimiter) {
+      this.memoryLimiter = new Map();
+    }
     const now = Date.now();
     const requests = this.memoryLimiter.get(identifier) || [];
     const validRequests = requests.filter((time: number) => now - time < this.windowMs);
@@ -104,6 +110,9 @@ class DistributedRateLimiter {
     }
 
     // Fallback
+    if (!this.memoryLimiter) {
+      this.memoryLimiter = new Map();
+    }
     const now = Date.now();
     const requests = this.memoryLimiter.get(identifier) || [];
     const validRequests = requests.filter((time: number) => now - time < this.windowMs);
@@ -115,6 +124,9 @@ class DistributedRateLimiter {
   }
 
   private cleanup(): void {
+    if (!this.memoryLimiter) {
+      return;
+    }
     const now = Date.now();
     for (const [identifier, requests] of this.memoryLimiter.entries()) {
       const validRequests = requests.filter((time: number) => now - time < this.windowMs);

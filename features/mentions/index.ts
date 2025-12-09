@@ -7,7 +7,7 @@
 export type { MentionableUser, Mention, MentionSuggestion } from './types';
 
 // Constants
-export { MENTION_TRIGGER, MENTION_REGEX } from './types';
+export { MENTION_TRIGGER, MENTION_REGEX, MENTION_DISPLAY_REGEX } from './types';
 
 // Utilities
 export {

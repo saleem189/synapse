@@ -42,6 +42,13 @@ const DialogContent = React.forwardRef<
         "bg-white dark:bg-surface-900 text-surface-900 dark:text-surface-100",
         className
       )}
+      onOpenAutoFocus={(e) => {
+        // Blur any focused elements outside the dialog to prevent aria-hidden warnings
+        const activeElement = document.activeElement as HTMLElement;
+        if (activeElement && !e.currentTarget.contains(activeElement)) {
+          activeElement.blur();
+        }
+      }}
       {...props}
     >
       {children}

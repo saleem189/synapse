@@ -16,6 +16,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface MessageActionsProps {
   messageId: string;
@@ -37,14 +47,17 @@ export function MessageActions({
   onUpdated,
 }: MessageActionsProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteForEveryone, setDeleteForEveryone] = useState(false);
 
   if (!isSent || isDeleted) return null;
 
-  const handleDelete = async (deleteForEveryone: boolean) => {
-    if (!confirm(deleteForEveryone ? "Delete this message for everyone?" : "Delete this message?")) {
-      return;
-    }
+  const handleDeleteClick = (forEveryone: boolean) => {
+    setDeleteForEveryone(forEveryone);
+    setDeleteDialogOpen(true);
+  };
 
+  const handleDelete = async () => {
     setIsDeleting(true);
     try {
       await apiClient.delete(`/messages/${messageId}`, {
@@ -53,6 +66,7 @@ export function MessageActions({
 
       onDelete?.(messageId);
       onUpdated?.();
+      setDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error deleting message:", error);
       // Error toast is handled by API client
@@ -91,7 +105,7 @@ export function MessageActions({
         )}
         {onEdit && <DropdownMenuSeparator />}
         <DropdownMenuItem
-          onClick={() => handleDelete(false)}
+          onClick={() => handleDeleteClick(false)}
           disabled={isDeleting}
           className="flex items-center gap-2.5 cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
         >
@@ -99,7 +113,7 @@ export function MessageActions({
           <span>Delete for me</span>
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => handleDelete(true)}
+          onClick={() => handleDeleteClick(true)}
           disabled={isDeleting}
           className="flex items-center gap-2.5 cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
         >
@@ -107,6 +121,28 @@ export function MessageActions({
           <span>Delete for everyone</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Message</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteForEveryone
+                ? "Are you sure you want to delete this message for everyone? This action cannot be undone."
+                : "Are you sure you want to delete this message? This will only remove it for you."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DropdownMenu>
   );
 }

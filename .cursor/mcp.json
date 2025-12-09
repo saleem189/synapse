@@ -2,6 +2,22 @@
   "mcpServers": {
     "Sentry": {
       "url": "https://mcp.sentry.dev/mcp/chatflow/javascript-nextjs"
+    },
+    "crenspire-glass": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@shadcn/mcp-server",
+        "--registry",
+        "https://glass-ui.crenspire.com/r/registry.json"
+      ]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
     }
   }
 }

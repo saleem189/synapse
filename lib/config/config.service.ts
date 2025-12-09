@@ -6,10 +6,11 @@
 
 import { Redis } from 'ioredis';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import type { ILogger } from '@/lib/logger/logger.interface';
 
 interface CachedConfig {
-  value: any;
+  value: unknown;
   expiresAt: number;
 }
 
@@ -125,13 +126,15 @@ export class ConfigService {
    * Set configuration value
    * Updates Database -> Redis -> Cache
    */
-  async set(key: string, value: any, ttl?: number): Promise<void> {
+  async set(key: string, value: unknown, ttl?: number): Promise<void> {
     try {
       // Update database
+      // Prisma expects InputJsonValue for JSON fields, so we need to cast unknown to it
+      const jsonValue = value as Prisma.InputJsonValue;
       await prisma.config.upsert({
         where: { key },
-        update: { value, updatedAt: new Date() },
-        create: { key, value },
+        update: { value: jsonValue, updatedAt: new Date() },
+        create: { key, value: jsonValue },
       });
 
       // Update Redis

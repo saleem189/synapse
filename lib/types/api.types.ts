@@ -10,14 +10,14 @@ export interface ApiError {
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
 }
 
 /**
  * Standard API success response
  */
-export interface ApiSuccess<T = any> {
+export interface ApiSuccess<T = unknown> {
   data?: T;
   message?: string;
 }

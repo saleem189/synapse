@@ -9,7 +9,26 @@ import { Hash, Users, MessageSquare, Trash2, Eye, Search } from "lucide-react";
 import { useSocket } from "@/hooks/use-socket";
 import { apiClient } from "@/lib/api-client";
 import { cn, getInitials, formatMessageTime } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import type { MessagePayload } from "@/lib/socket";
 
 
 interface Room {
@@ -45,6 +64,8 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
   const [rooms, setRooms] = useState(initialRooms);
   const [search, setSearch] = useState("");
   const [liveMessageCounts, setLiveMessageCounts] = useState<Record<string, number>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
 
   // Use centralized socket hook
   const { socket } = useSocket({ emitUserConnect: true });
@@ -53,7 +74,7 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
   useEffect(() => {
     if (!socket) return;
 
-    const handleReceiveMessage = (message: any) => {
+    const handleReceiveMessage = (message: MessagePayload) => {
       setLiveMessageCounts((prev) => ({
         ...prev,
         [message.roomId]: (prev[message.roomId] || 0) + 1,
@@ -80,14 +101,19 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
       room.owner.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const deleteRoom = async (roomId: string) => {
-    if (!confirm("Are you sure you want to delete this room? All messages will be lost.")) {
-      return;
-    }
+  const handleDeleteClick = (roomId: string) => {
+    setRoomToDelete(roomId);
+    setDeleteDialogOpen(true);
+  };
+
+  const deleteRoom = async () => {
+    if (!roomToDelete) return;
 
     try {
-      await apiClient.delete(`/admin/rooms?roomId=${roomId}`);
-      setRooms((prev) => prev.filter((r) => r.id !== roomId));
+      await apiClient.delete(`/admin/rooms?roomId=${roomToDelete}`);
+      setRooms((prev) => prev.filter((r) => r.id !== roomToDelete));
+      setDeleteDialogOpen(false);
+      setRoomToDelete(null);
     } catch (error) {
       console.error("Failed to delete room:", error);
     }
@@ -111,40 +137,40 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-surface-50 dark:bg-surface-800/50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Room
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Type
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Owner
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Members
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Messages
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
                 Created
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-surface-500 uppercase">
+              </TableHead>
+              <TableHead className="text-right text-xs font-semibold text-surface-500 uppercase">
                 Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-200 dark:divide-surface-800">
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredRooms.map((room) => (
-              <tr
+              <TableRow
                 key={room.id}
                 className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors"
               >
                 {/* Room Info */}
-                <td className="px-4 py-3">
+                <TableCell>
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
@@ -167,10 +193,10 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
                       )}
                     </div>
                   </div>
-                </td>
+                </TableCell>
 
                 {/* Type */}
-                <td className="px-4 py-3">
+                <TableCell>
                   <span
                     className={cn(
                       "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
@@ -182,23 +208,23 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
                     {room.isGroup ? <Users className="w-3 h-3" /> : <MessageSquare className="w-3 h-3" />}
                     {room.isGroup ? "Group" : "DM"}
                   </span>
-                </td>
+                </TableCell>
 
                 {/* Owner */}
-                <td className="px-4 py-3">
+                <TableCell>
                   <p className="text-sm text-surface-900 dark:text-white">
                     {room.owner.name}
                   </p>
                   <p className="text-xs text-surface-500">{room.owner.email}</p>
-                </td>
+                </TableCell>
 
                 {/* Members */}
-                <td className="px-4 py-3 text-surface-600 dark:text-surface-300">
+                <TableCell className="text-surface-600 dark:text-surface-300">
                   {room._count.participants}
-                </td>
+                </TableCell>
 
                 {/* Messages */}
-                <td className="px-4 py-3">
+                <TableCell>
                   <div className="flex items-center gap-2">
                     <span className="text-surface-600 dark:text-surface-300">
                       {room.totalMessages}
@@ -209,15 +235,15 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
                       </span>
                     )}
                   </div>
-                </td>
+                </TableCell>
 
                 {/* Created */}
-                <td className="px-4 py-3 text-sm text-surface-500">
+                <TableCell className="text-sm text-surface-500">
                   {formatMessageTime(room.createdAt instanceof Date ? room.createdAt.toISOString() : room.createdAt)}
-                </td>
+                </TableCell>
 
                 {/* Actions */}
-                <td className="px-4 py-3">
+                <TableCell>
                   <div className="flex items-center justify-end gap-2">
                     <Link
                       href={`/admin/rooms/${room.id}`}
@@ -227,18 +253,18 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
                       <Eye className="w-4 h-4" />
                     </Link>
                     <button
-                      onClick={() => deleteRoom(room.id)}
+                      onClick={() => handleDeleteClick(room.id)}
                       className="w-8 h-8 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center text-red-500"
                       title="Delete room"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {filteredRooms.length === 0 && (
@@ -246,6 +272,27 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
           No rooms found
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Room</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this room? All messages will be lost. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteRoom}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

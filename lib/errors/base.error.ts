@@ -7,7 +7,7 @@ export abstract class AppError extends Error {
   abstract statusCode: number;
   abstract code: string;
 
-  constructor(message: string, public details?: any) {
+  constructor(message: string, public details?: unknown) {
     super(message);
     this.name = this.constructor.name;
     
@@ -18,13 +18,16 @@ export abstract class AppError extends Error {
   }
 
   toJSON() {
-    return {
+    const result: { error: { code: string; message: string; details?: unknown } } = {
       error: {
         code: this.code,
         message: this.message,
-        ...(this.details && { details: this.details }),
       },
     };
+    if (this.details) {
+      result.error.details = this.details;
+    }
+    return result;
   }
 }
 

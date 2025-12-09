@@ -12,6 +12,16 @@ import { cn, getInitials } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Participant {
   id: string;
@@ -41,33 +51,46 @@ export function RoomMembersPanel({
 }: RoomMembersPanelProps) {
   const [showAddMember, setShowAddMember] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [removeMemberDialogOpen, setRemoveMemberDialogOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [adminAction, setAdminAction] = useState<{ userId: string; isCurrentlyAdmin: boolean } | null>(null);
 
-  const handleRemoveMember = async (userId: string, userName: string) => {
-    if (!confirm(`Remove ${userName} from this ${isGroup ? "group" : "chat"}?`)) {
-      return;
-    }
+  const handleRemoveMemberClick = (userId: string, userName: string) => {
+    setMemberToRemove({ id: userId, name: userName });
+    setRemoveMemberDialogOpen(true);
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
 
     try {
-      await apiClient.delete(`/rooms/${roomId}/members?userId=${userId}`);
+      await apiClient.delete(`/rooms/${roomId}/members?userId=${memberToRemove.id}`);
       onUpdate();
+      setRemoveMemberDialogOpen(false);
+      setMemberToRemove(null);
     } catch (error) {
       console.error("Error removing member:", error);
       toast.error("An error occurred. Please try again.");
     }
   };
 
-  const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
-    const action = isCurrentlyAdmin ? "remove admin from" : "make admin";
-    if (!confirm(`Are you sure you want to ${action} this user?`)) {
-      return;
-    }
+  const handleToggleAdminClick = (userId: string, isCurrentlyAdmin: boolean) => {
+    setAdminAction({ userId, isCurrentlyAdmin });
+    setAdminDialogOpen(true);
+  };
+
+  const handleToggleAdmin = async () => {
+    if (!adminAction) return;
 
     try {
       await apiClient.post(`/rooms/${roomId}/admin`, {
-        userId,
-        isAdmin: !isCurrentlyAdmin,
+        userId: adminAction.userId,
+        isAdmin: !adminAction.isCurrentlyAdmin,
       });
       onUpdate();
+      setAdminDialogOpen(false);
+      setAdminAction(null);
     } catch (error) {
       console.error("Error updating admin:", error);
       toast.error("An error occurred. Please try again.");
@@ -139,7 +162,7 @@ export function RoomMembersPanel({
                 </div>
                 {isRoomAdmin && participant.id !== currentUserId && !participant.isOwner && (
                   <button
-                    onClick={() => handleToggleAdmin(participant.id, true)}
+                    onClick={() => handleToggleAdminClick(participant.id, true)}
                     className="opacity-0 group-hover:opacity-100 px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                   >
                     Remove Admin
@@ -183,7 +206,7 @@ export function RoomMembersPanel({
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                     {isGroup && (
                       <button
-                        onClick={() => handleToggleAdmin(participant.id, false)}
+                        onClick={() => handleToggleAdminClick(participant.id, false)}
                         className="px-3 py-1.5 text-xs text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                         title="Make admin"
                       >
@@ -191,7 +214,7 @@ export function RoomMembersPanel({
                       </button>
                     )}
                     <button
-                      onClick={() => handleRemoveMember(participant.id, participant.name)}
+                      onClick={() => handleRemoveMemberClick(participant.id, participant.name)}
                       className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                       title="Remove member"
                     >
@@ -222,6 +245,49 @@ export function RoomMembersPanel({
           </div>
         </div>
       )}
+
+      {/* Remove Member Confirmation Dialog */}
+      <AlertDialog open={removeMemberDialogOpen} onOpenChange={setRemoveMemberDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {memberToRemove?.name} from this {isGroup ? "group" : "chat"}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveMember}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Toggle Admin Confirmation Dialog */}
+      <AlertDialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {adminAction?.isCurrentlyAdmin ? "Remove Admin" : "Make Admin"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to {adminAction?.isCurrentlyAdmin ? "remove admin from" : "make admin"} this user?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleAdmin}
+            >
+              {adminAction?.isCurrentlyAdmin ? "Remove Admin" : "Make Admin"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

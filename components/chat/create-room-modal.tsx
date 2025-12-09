@@ -11,9 +11,11 @@ import { X, Search, Check, Loader2, MessageCircle, Users } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { cn, getInitials } from "@/lib/utils";
+import type { RoomResponse } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -21,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface User {
   id: string;
@@ -34,12 +37,7 @@ import { useUserStore } from "@/lib/store";
 interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRoomCreated: (room: {
-    id: string;
-    name: string;
-    isGroup: boolean;
-    participants: { id: string; name: string; avatar?: string | null; status: string }[];
-  }) => void;
+  onRoomCreated: (room: RoomResponse) => void;
 }
 
 export function CreateRoomModal({
@@ -120,7 +118,7 @@ export function CreateRoomModal({
   const startDirectChat = async (user: User) => {
     setIsCreating(true);
     try {
-      const data = await apiClient.post<{ room: any }>("/rooms", {
+      const data = await apiClient.post<{ room: RoomResponse }>("/rooms", {
         isGroup: false,
         participantIds: [user.id],
       });
@@ -157,7 +155,7 @@ export function CreateRoomModal({
 
     setIsCreating(true);
     try {
-      const data = await apiClient.post<{ room: any }>("/rooms", {
+      const data = await apiClient.post<{ room: RoomResponse }>("/rooms", {
         name: groupName.trim(),
         isGroup: true,
         participantIds: selectedUsers.map((u) => u.id),
@@ -187,6 +185,11 @@ export function CreateRoomModal({
           <DialogTitle>
             {mode === "select" ? "New Chat" : "Create Group"}
           </DialogTitle>
+          <DialogDescription>
+            {mode === "select" 
+              ? "Start a new conversation or create a group chat."
+              : "Create a group chat with multiple participants."}
+          </DialogDescription>
         </DialogHeader>
 
         {mode === "select" && (
@@ -237,7 +240,7 @@ export function CreateRoomModal({
             )}
 
             {/* User list */}
-            <div className="p-4 max-h-80 overflow-y-auto">
+            <ScrollArea className="p-4 max-h-80">
               <p className="text-xs text-surface-500 mb-3">
                 Click to start chat • Right-click or long press to select for group
               </p>
@@ -322,7 +325,7 @@ export function CreateRoomModal({
                   })}
                 </div>
               )}
-            </div>
+            </ScrollArea>
 
             {isCreating && (
               <div className="absolute inset-0 bg-white/80 dark:bg-surface-900/80 flex items-center justify-center">

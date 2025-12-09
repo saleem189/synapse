@@ -373,7 +373,7 @@ export class MessageService {
     messageId: string,
     userId: string,
     emoji: string
-  ): Promise<{ action: 'added' | 'removed'; reaction: any }> {
+  ): Promise<{ action: 'added' | 'removed'; reaction: { id: string; messageId: string; userId: string; emoji: string; createdAt: Date } | null }> {
     if (this.reactionService) {
       return this.reactionService.toggleReaction(messageId, userId, emoji);
     }

@@ -15,6 +15,7 @@ import { apiRateLimiter, rateLimitMiddleware } from "@/lib/rate-limit";
 import { CACHE_HEADERS } from "@/lib/utils/cache-headers";
 import { validateRequest } from "@/lib/middleware/validate-request";
 import { createRoomSchema } from "@/lib/validations";
+import type { ILogger } from "@/lib/logger/logger.interface";
 
 // Services are resolved asynchronously inside route handlers
 
@@ -42,7 +43,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return rateLimit.response as NextResponse;
     }
 
-    const rooms = await roomService.getUserRooms(session.user.id);
+    // Fetch rooms with error handling
+    let rooms;
+    try {
+      rooms = await roomService.getUserRooms(session.user.id);
+    } catch (serviceError) {
+      // Log the error for debugging
+      const logger = await getService<ILogger>('logger');
+      logger.error(
+        '[GET /api/rooms] Error fetching rooms',
+        serviceError instanceof Error ? serviceError : new Error(String(serviceError)),
+        { component: 'RoomsAPI', userId: session.user.id }
+      );
+      throw serviceError;
+    }
+
     const response = NextResponse.json({ rooms });
     
     // Add caching headers for better performance
@@ -57,6 +72,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     return response;
   } catch (error) {
+    // Error is handled by handleError which logs to Sentry
     return handleError(error);
   }
 }

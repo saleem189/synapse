@@ -21,7 +21,6 @@ interface VirtualizedMessageListProps {
   onEdit: (messageId: string, content: string) => void;
   onDelete: (messageId: string) => Promise<void>;
   onReactionChange: (messageId: string) => Promise<void>;
-  onContextMenu: (e: React.MouseEvent, message: Message) => void;
   createLongPressHandlers: (message: Message) => {
     onTouchStart: (e: React.TouchEvent | React.MouseEvent) => void;
     onTouchEnd: (e: React.TouchEvent | React.MouseEvent) => void;
@@ -50,7 +49,6 @@ export function VirtualizedMessageList({
   onEdit,
   onDelete,
   onReactionChange,
-  onContextMenu,
   createLongPressHandlers,
   containerRef,
 }: VirtualizedMessageListProps) {
@@ -208,7 +206,6 @@ export function VirtualizedMessageList({
               onEdit={onEdit}
               onDelete={onDelete}
               onReactionChange={() => onReactionChange(message.id)}
-              onContextMenu={onContextMenu}
               createLongPressHandlers={createLongPressHandlers}
             />
           </div>

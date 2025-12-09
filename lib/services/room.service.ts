@@ -53,24 +53,47 @@ export class RoomService {
   }>> {
     const rooms = await this.roomRepo.findByUserId(userId);
 
-    return rooms.map((room) => ({
-      id: room.id,
-      name: room.name,
-      isGroup: room.isGroup,
-      lastMessage: room.messages?.[0]?.sender
-        ? {
-            content: room.messages[0]!.content,
-            createdAt: room.messages[0]!.createdAt.toISOString(),
-            senderName: room.messages[0]!.sender.name,
+    return rooms.map((room) => {
+      const lastMessage = room.messages?.[0];
+      
+      // Handle createdAt - it might be a Date (from DB) or string (from cache)
+      let createdAtISO: string | undefined;
+      if (lastMessage?.createdAt) {
+        const createdAt = lastMessage.createdAt;
+        if (createdAt instanceof Date) {
+          createdAtISO = createdAt.toISOString();
+        } else if (typeof createdAt === 'string') {
+          // Already a string (from cache), validate it's ISO format
+          createdAtISO = createdAt;
+        } else {
+          // Fallback: try to parse as Date
+          try {
+            createdAtISO = new Date(createdAt as any).toISOString();
+          } catch {
+            createdAtISO = undefined;
           }
-        : undefined,
-      participants: room.participants.map((p) => ({
-        id: p.user.id,
-        name: p.user.name,
-        avatar: p.user.avatar,
-        status: p.user.status || 'OFFLINE',
-      })),
-    }));
+        }
+      }
+      
+      return {
+        id: room.id,
+        name: room.name,
+        isGroup: room.isGroup,
+        lastMessage: lastMessage?.sender && createdAtISO
+          ? {
+              content: lastMessage.content,
+              createdAt: createdAtISO,
+              senderName: lastMessage.sender.name,
+            }
+          : undefined,
+        participants: room.participants.map((p) => ({
+          id: p.user.id,
+          name: p.user.name,
+          avatar: p.user.avatar,
+          status: p.user.status || 'OFFLINE',
+        })),
+      };
+    });
   }
 
   /**

@@ -22,7 +22,7 @@ export async function setupEmailEventHandlers(): Promise<void> {
     try {
       logger.log(`📧 Sending welcome email to ${data.email}`);
       await emailService.sendWelcomeEmail(data.email, data.name);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(`Failed to send welcome email to ${data.email}:`, error, {
         component: 'EmailEventHandlers',
         email: data.email,
@@ -39,7 +39,7 @@ export async function setupEmailEventHandlers(): Promise<void> {
     try {
       logger.log(`📧 Sending password reset email to ${data.email}`);
       await emailService.sendPasswordResetEmail(data.email, data.resetToken, data.resetUrl);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(`Failed to send password reset email to ${data.email}:`, error, {
         component: 'EmailEventHandlers',
         email: data.email,
@@ -56,7 +56,7 @@ export async function setupEmailEventHandlers(): Promise<void> {
     try {
       logger.log(`📧 Sending verification email to ${data.email}`);
       await emailService.sendVerificationEmail(data.email, data.verificationToken, data.verificationUrl);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(`Failed to send verification email to ${data.email}:`, error, {
         component: 'EmailEventHandlers',
         email: data.email,
@@ -81,7 +81,7 @@ export async function setupEmailEventHandlers(): Promise<void> {
         data.actionUrl,
         data.actionText
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(`Failed to send notification email to ${data.email}:`, error, {
         component: 'EmailEventHandlers',
         email: data.email,

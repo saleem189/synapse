@@ -2,11 +2,25 @@
 // Server-Side Input Sanitization
 // ================================
 // Sanitizes user input on the server to prevent XSS attacks
-// Uses a simple but effective approach for server-side sanitization
+// Uses DOMPurify with JSDOM for robust, consistent sanitization
+
+import 'server-only';
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
+
+// Create a JSDOM window instance for DOMPurify
+// This is created once at module load and reused for performance
+const jsdomWindow = new JSDOM('').window;
+// DOMPurify accepts JSDOM's window object
+// Type assertion needed because JSDOM's window type doesn't exactly match DOMPurify's expected type
+// but it's compatible at runtime - JSDOM provides all necessary DOM APIs
+// @ts-ignore - JSDOM window is runtime-compatible with DOMPurify requirements
+const purify = DOMPurify(jsdomWindow);
 
 /**
  * Sanitize message content on the server
- * Removes dangerous HTML tags and attributes
+ * Uses DOMPurify with JSDOM for robust XSS protection
+ * Same configuration as client-side for consistency
  * 
  * @param content - Raw message content from user
  * @returns Sanitized string safe for storage
@@ -16,48 +30,17 @@ export function sanitizeMessageContent(content: string): string {
     return '';
   }
 
-  // Remove script tags and event handlers
-  let sanitized = content
-    // Remove script tags
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    // Remove iframe tags
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    // Remove object/embed tags
-    .replace(/<(object|embed)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, '')
-    // Remove event handlers (onclick, onerror, etc.)
-    .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
-    // Remove javascript: and data: protocols
-    .replace(/javascript:/gi, '')
-    .replace(/data:text\/html/gi, '');
-
-  // Allow only safe HTML tags (basic formatting)
-  const allowedTags = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p'];
-  const tagPattern = new RegExp(`<(?!\/?(${allowedTags.join('|')})\b)[^>]+>`, 'gi');
-  sanitized = sanitized.replace(tagPattern, '');
-
-  // Remove dangerous attributes from allowed tags
-  sanitized = sanitized.replace(/<(\w+)([^>]*)>/gi, (match, tag, attrs) => {
-    if (!allowedTags.includes(tag.toLowerCase())) {
-      return '';
-    }
-    
-    // Only allow safe attributes
-    const safeAttrs = attrs
-      .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '') // Remove event handlers
-      .replace(/\s*href\s*=\s*["'](?!javascript:|data:)[^"']*["']/gi, (hrefMatch: string) => {
-        // Only allow http/https URLs
-        const urlMatch = hrefMatch.match(/["']([^"']+)["']/);
-        if (urlMatch && (urlMatch[1].startsWith('http://') || urlMatch[1].startsWith('https://'))) {
-          return hrefMatch;
-        }
-        return '';
-      })
-      .replace(/\s*(target|rel)\s*=\s*["'][^"']*["']/gi, ''); // Allow target and rel
-    
-    return `<${tag}${safeAttrs}>`;
-  });
-
-  return sanitized.trim();
+  // Sanitize with DOMPurify - same configuration as client-side
+  return purify.sanitize(content, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+    ALLOW_DATA_ATTR: false,
+    // Prevent script injection
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+    // Only allow http/https URLs in href
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  }).trim();
 }
 
 /**

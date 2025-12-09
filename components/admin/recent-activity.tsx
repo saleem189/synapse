@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/use-socket";
 import { getInitials, formatMessageTime } from "@/lib/utils";
 import { UserPlus, MessageSquare, Hash } from "lucide-react";
+import type { MessagePayload } from "@/lib/socket";
 
 interface RecentUser {
   id: string;
@@ -50,7 +51,7 @@ export function RecentActivity({ recentUsers }: RecentActivityProps) {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    const handleReceiveMessage = (message: any) => {
+    const handleReceiveMessage = (message: MessagePayload) => {
       const newActivity: Activity = {
         id: `msg_${Date.now()}`,
         type: "message",

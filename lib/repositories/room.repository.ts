@@ -159,13 +159,19 @@ export class RoomRepository extends BaseRepository<
     });
 
     // Fetch last messages separately in batch (more efficient than nested includes)
+    // Get the latest message for each room by fetching all messages and grouping
     const roomIds = rooms.map(r => r.id);
-    const lastMessages = await this.prisma.message.findMany({
+    
+    if (roomIds.length === 0) {
+      return [] as RoomWithRelations[];
+    }
+
+    // Fetch all messages for these rooms, ordered by creation date
+    const allMessages = await this.prisma.message.findMany({
       where: {
         roomId: { in: roomIds },
         isDeleted: false,
       },
-      distinct: ['roomId'],
       orderBy: { createdAt: 'desc' },
       include: {
         sender: {
@@ -178,8 +184,13 @@ export class RoomRepository extends BaseRepository<
       },
     });
 
-    // Map messages to rooms
-    const messageMap = new Map(lastMessages.map(m => [m.roomId, m]));
+    // Group messages by roomId and take the first (latest) message for each room
+    const messageMap = new Map<string, typeof allMessages[0]>();
+    for (const message of allMessages) {
+      if (!messageMap.has(message.roomId)) {
+        messageMap.set(message.roomId, message);
+      }
+    }
 
     return rooms.map(room => ({
       ...room,

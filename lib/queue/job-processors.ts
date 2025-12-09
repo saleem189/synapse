@@ -26,9 +26,9 @@ if (
 
 // Simple logger for processors
 const logger = {
-  log: (msg: string, ...args: any[]) => console.log(`[Worker] ${msg}`, ...args),
-  error: (msg: string, ...args: any[]) => console.error(`[Worker] ❌ ${msg}`, ...args),
-  warn: (msg: string, ...args: any[]) => console.warn(`[Worker] ⚠️ ${msg}`, ...args),
+  log: (msg: string, ...args: unknown[]) => console.log(`[Worker] ${msg}`, ...args),
+  error: (msg: string, ...args: unknown[]) => console.error(`[Worker] ❌ ${msg}`, ...args),
+  warn: (msg: string, ...args: unknown[]) => console.warn(`[Worker] ⚠️ ${msg}`, ...args),
 };
 
 /**
@@ -77,15 +77,17 @@ export async function processPushNotification(job: Job) {
             notificationPayload
           );
           sent++;
-        } catch (error: any) {
+        } catch (error: unknown) {
           // If subscription is invalid (410 Gone), delete it
-          if (error.statusCode === 410) {
+          const webPushError = error as { statusCode?: number };
+          if (webPushError.statusCode === 410) {
             await prisma.pushSubscription.delete({
               where: { id: sub.id },
             });
             logger.log(`Removed invalid subscription ${sub.id}`);
           } else {
-            logger.error(`Error sending push notification to ${sub.id}:`, error.message);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(`Error sending push notification to ${sub.id}:`, errorMessage);
           }
           failed++;
         }
@@ -94,8 +96,9 @@ export async function processPushNotification(job: Job) {
 
     logger.log(`✅ Push notification job ${job.id} completed: ${sent} sent, ${failed} failed`);
     return { sent, failed, total: subscriptions.length };
-  } catch (error: any) {
-    logger.error(`❌ Push notification job ${job.id} failed:`, error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ Push notification job ${job.id} failed:`, errorMessage);
     throw error; // Re-throw to trigger retry
   }
 }
@@ -193,8 +196,9 @@ export async function processImage(job: Job) {
       savings: parseFloat(savings),
       outputPath,
     };
-  } catch (error: any) {
-    logger.error(`❌ Image job ${job.id} failed:`, error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ Image job ${job.id} failed:`, errorMessage);
     throw error;
   }
 }
@@ -243,8 +247,9 @@ export async function processVideo(job: Job) {
       outputPath,
       note: 'Video compression requires ffmpeg',
     };
-  } catch (error: any) {
-    logger.error(`❌ Video job ${job.id} failed:`, error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ Video job ${job.id} failed:`, errorMessage);
     throw error;
   }
 }
@@ -314,8 +319,9 @@ export async function optimizeAvatar(job: Job) {
       savings: parseFloat(savings),
       outputPath: optimizedPath,
     };
-  } catch (error: any) {
-    logger.error(`❌ Avatar job ${job.id} failed:`, error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ Avatar job ${job.id} failed:`, errorMessage);
     throw error;
   }
 }

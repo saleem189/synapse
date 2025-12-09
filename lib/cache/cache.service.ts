@@ -38,7 +38,7 @@ export class CacheService {
   /**
    * Set cached value with TTL
    */
-  async set(key: string, value: any, ttl: number = 3600): Promise<void> {
+  async set(key: string, value: unknown, ttl: number = 3600): Promise<void> {
     try {
       await this.redis.setex(key, ttl, JSON.stringify(value));
     } catch (error) {

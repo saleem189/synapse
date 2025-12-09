@@ -17,6 +17,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface RoomMenuProps {
   roomId: string;
@@ -31,6 +41,7 @@ interface RoomMenuProps {
 export function RoomMenu({ roomId, isGroup, isRoomAdmin, onLeaveRoom, onDeleteRoom, onViewMembers, onRoomSettings }: RoomMenuProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isArchived, setIsArchived] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const router = useRouter();
 
   // Load mute and archive status from localStorage
@@ -78,13 +89,11 @@ export function RoomMenu({ roomId, isGroup, isRoomAdmin, onLeaveRoom, onDeleteRo
   };
 
   // Leave or delete room
-  const handleLeaveOrDelete = async () => {
-    const confirmMessage = isGroup 
-      ? "Are you sure you want to leave this group? You won't receive messages anymore."
-      : "Are you sure you want to delete this chat? All messages will be lost.";
-    
-    if (!confirm(confirmMessage)) return;
+  const handleLeaveOrDeleteClick = () => {
+    setLeaveDialogOpen(true);
+  };
 
+  const handleLeaveOrDelete = async () => {
     try {
       if (isGroup) {
         // Leave group - remove user from participants
@@ -103,6 +112,7 @@ export function RoomMenu({ roomId, isGroup, isRoomAdmin, onLeaveRoom, onDeleteRo
           router.push("/chat");
         }
       }
+      setLeaveDialogOpen(false);
     } catch (error) {
       console.error("Error leaving/deleting room:", error);
       toast.error("An error occurred. Please try again.");
@@ -150,7 +160,7 @@ export function RoomMenu({ roomId, isGroup, isRoomAdmin, onLeaveRoom, onDeleteRo
     {
       icon: Trash2,
       label: isGroup ? "Leave Group" : "Delete Chat",
-      onClick: handleLeaveOrDelete,
+      onClick: handleLeaveOrDeleteClick,
       className: "text-red-600 dark:text-red-400",
     },
   ];
@@ -190,6 +200,29 @@ export function RoomMenu({ roomId, isGroup, isRoomAdmin, onLeaveRoom, onDeleteRo
           );
         })}
       </DropdownMenuContent>
+      <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isGroup ? "Leave Group" : "Delete Chat"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isGroup
+                ? "Are you sure you want to leave this group? You won't receive messages anymore."
+                : "Are you sure you want to delete this chat? All messages will be lost. This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveOrDelete}
+              className={isGroup ? "" : "bg-red-600 hover:bg-red-700 focus:ring-red-600"}
+            >
+              {isGroup ? "Leave" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DropdownMenu>
   );
 }

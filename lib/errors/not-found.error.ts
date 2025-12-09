@@ -9,7 +9,7 @@ export class NotFoundError extends AppError {
   statusCode = 404;
   code = 'NOT_FOUND';
 
-  constructor(message: string = 'Resource not found', details?: any) {
+  constructor(message: string = 'Resource not found', details?: unknown) {
     super(message, details);
   }
 }

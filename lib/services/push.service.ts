@@ -159,9 +159,10 @@ export class PushService {
             notificationPayload
           );
           return { success: true, subscriptionId: sub.id };
-        } catch (error: any) {
+        } catch (error: unknown) {
           // If subscription is invalid (410 Gone), delete it
-          if (error.statusCode === 410) {
+          const webPushError = error as { statusCode?: number };
+          if (webPushError.statusCode === 410) {
             await prisma.pushSubscription.delete({
               where: { id: sub.id },
             });
@@ -191,7 +192,10 @@ export class PushService {
         if (r.status === 'rejected') {
           return { subscriptionId: 'unknown', error: r.reason?.message || 'Unknown error' };
         }
-        return { subscriptionId: r.value.subscriptionId, error: r.value.error?.message || 'Unknown error' };
+        const errorMessage = r.value.error && typeof r.value.error === 'object' && 'message' in r.value.error 
+          ? String(r.value.error.message) 
+          : 'Unknown error';
+        return { subscriptionId: r.value.subscriptionId, error: errorMessage };
       });
       this.logger.warn(
         `Failed to send ${failed.length}/${subscriptions.length} push notifications`,

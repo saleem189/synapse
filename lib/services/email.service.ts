@@ -33,7 +33,7 @@ export class EmailService {
     try {
       const provider = await EmailServiceFactory.getInstance().create();
       return await provider.sendEmail(params);
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error('Error sending email:', error, {
         component: 'EmailService',
       });
@@ -48,7 +48,7 @@ export class EmailService {
     try {
       const provider = await EmailServiceFactory.getInstance().create();
       return await provider.sendBulk({ emails });
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error('Error sending bulk emails:', error, {
         component: 'EmailService',
       });

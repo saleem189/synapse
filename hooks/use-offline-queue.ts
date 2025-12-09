@@ -9,11 +9,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSocket } from "./use-socket";
 import { toast } from "sonner";
+import type { Message } from "@/lib/types";
+import type { MessagePayload } from "@/lib/socket";
 
 export interface QueuedAction {
   id: string;
   type: "send-message" | "edit-message" | "delete-message";
-  payload: any;
+  payload: Record<string, unknown>;
   timestamp: number;
   retries?: number;
 }
@@ -105,41 +107,52 @@ export function useOfflineQueue(
         switch (action.type) {
           case "send-message": {
             // Send message via API
-            const response = await apiClient.post<{ message: any }>("/messages", {
-              content: action.payload.content,
-              roomId: action.payload.roomId,
-              fileUrl: action.payload.fileUrl,
-              fileName: action.payload.fileName,
-              fileSize: action.payload.fileSize,
-              fileType: action.payload.fileType,
-              type: action.payload.type,
-              replyToId: action.payload.replyToId,
+            const payload = action.payload as {
+              content: string;
+              roomId: string;
+              fileUrl?: string;
+              fileName?: string;
+              fileSize?: number;
+              fileType?: string;
+              type?: string;
+              replyToId?: string;
+            };
+            const response = await apiClient.post<{ message: Message }>("/messages", {
+              content: payload.content,
+              roomId: payload.roomId,
+              fileUrl: payload.fileUrl,
+              fileName: payload.fileName,
+              fileSize: payload.fileSize,
+              fileType: payload.fileType,
+              type: payload.type,
+              replyToId: payload.replyToId,
             });
 
             // Emit via socket if available
             if (socket?.connected) {
               socket.emit("send-message", {
-                ...action.payload,
+                ...(action.payload as unknown as MessagePayload),
                 id: response.message.id,
                 createdAt: response.message.createdAt,
-              });
+              } as MessagePayload);
             }
 
             return true;
           }
 
           case "edit-message": {
-            await apiClient.patch(`/messages/${action.payload.messageId}`, {
-              content: action.payload.content,
+            const payload = action.payload as { messageId: string; content: string; roomId: string };
+            await apiClient.patch(`/messages/${payload.messageId}`, {
+              content: payload.content,
             });
 
             // Emit via socket if available
             const socketInstance = getSocket();
             if (socketInstance?.connected) {
               socketInstance.emit("message-updated", {
-                messageId: action.payload.messageId,
-                content: action.payload.content,
-                roomId: action.payload.roomId,
+                messageId: payload.messageId,
+                content: payload.content,
+                roomId: payload.roomId,
               });
             }
 
@@ -147,14 +160,15 @@ export function useOfflineQueue(
           }
 
           case "delete-message": {
-            await apiClient.delete(`/messages/${action.payload.messageId}`);
+            const payload = action.payload as { messageId: string; roomId: string };
+            await apiClient.delete(`/messages/${payload.messageId}`);
 
             // Emit via socket if available
             const socketInstance = getSocket();
             if (socketInstance?.connected) {
               socketInstance.emit("message-deleted", {
-                messageId: action.payload.messageId,
-                roomId: action.payload.roomId,
+                messageId: payload.messageId,
+                roomId: payload.roomId,
               });
             }
 
