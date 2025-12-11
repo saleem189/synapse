@@ -4,6 +4,9 @@
 // This file contains Node.js-specific shutdown handlers
 // It should only be imported in Node.js runtime, not Edge Runtime
 
+// Track if handlers are already registered to prevent duplicates
+let handlersRegistered = false;
+
 /**
  * Register shutdown handlers for graceful resource cleanup
  * Ensures all services with destroy() methods are properly cleaned up
@@ -14,6 +17,12 @@ export function registerShutdownHandlers(): void {
   if (typeof process === 'undefined' || !process.exit || !process.on) {
     return;
   }
+
+  // Prevent multiple registrations
+  if (handlersRegistered) {
+    return;
+  }
+  handlersRegistered = true;
 
   let isShuttingDown = false;
 
@@ -72,6 +81,12 @@ export function registerShutdownHandlers(): void {
 
   // Register signal handlers (only in Node.js)
   if (typeof process !== 'undefined' && process.on) {
+    // Increase max listeners to prevent warnings if multiple handlers are needed
+    // (e.g., in development with hot reloading or multiple processes)
+    if (process.setMaxListeners) {
+      process.setMaxListeners(15);
+    }
+    
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
 

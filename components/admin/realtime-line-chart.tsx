@@ -86,13 +86,13 @@ export function RealtimeLineChart({ title, unit = "", color = "#3b82f6" }: { tit
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-surface-900 dark:text-white">{title}</h3>
-          <p className="text-2xl font-bold text-surface-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+          <p className="text-2xl font-bold text-foreground">
             {currentValue * 20}
-            {unit && <span className="text-sm text-surface-500 ml-1">{unit}</span>}
+            {unit && <span className="text-sm text-muted-foreground ml-1">{unit}</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-surface-400">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           Updating every 3s
         </div>

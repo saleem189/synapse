@@ -97,19 +97,19 @@ export function RecentActivity({ recentUsers }: RecentActivityProps) {
       case "room_created":
         return "bg-purple-500";
       default:
-        return "bg-surface-500";
+        return "bg-muted";
     }
   };
 
   return (
     <div className="space-y-4">
       {activities.length === 0 ? (
-        <p className="text-center text-surface-500 py-8">No recent activity</p>
+        <p className="text-center text-muted-foreground py-8">No recent activity</p>
       ) : (
         activities.map((activity) => (
           <div
             key={activity.id}
-            className="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+            className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors"
           >
             {/* Icon */}
             <div
@@ -120,11 +120,11 @@ export function RecentActivity({ recentUsers }: RecentActivityProps) {
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-surface-900 dark:text-white">
+              <p className="text-sm text-foreground">
                 <span className="font-semibold">{activity.user}</span>{" "}
-                <span className="text-surface-500">{activity.content}</span>
+                <span className="text-muted-foreground">{activity.content}</span>
               </p>
-              <p className="text-xs text-surface-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {formatMessageTime(activity.time)}
               </p>
             </div>

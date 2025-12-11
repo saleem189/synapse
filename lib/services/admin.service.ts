@@ -114,13 +114,67 @@ export class AdminService {
   }
 
   /**
+   * Get all rooms with statistics
+   * Supports pagination and search
+   */
+  async getAllRooms(options?: {
+    skip?: number;
+    take?: number;
+    search?: string;
+  }) {
+    const prisma = this.roomRepository.getPrismaClient();
+    const { skip = 0, take = 50, search } = options || {};
+    
+    return prisma.chatRoom.findMany({
+      where: search ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ]
+      } : undefined,
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            messages: true,
+            participants: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    });
+  }
+
+  /**
    * Get application statistics
+   * Includes total counts, recent users, and messages per day
    */
   async getStats() {
     const prisma = this.userRepository.getPrismaClient();
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const [totalUsers, totalMessages, totalRooms, messagesThisHour] = await Promise.all([
+    const [totalUsers, totalMessages, totalRooms, messagesThisHour, recentUsers, messagesPerDay] = await Promise.all([
       prisma.user.count(),
       prisma.message.count(),
       prisma.chatRoom.count(),
@@ -129,6 +183,24 @@ export class AdminService {
           createdAt: { gte: oneHourAgo },
         },
       }),
+      prisma.user.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+      prisma.message.groupBy({
+        by: ['createdAt'],
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+        },
+        _count: true,
+      }),
     ]);
 
     return {
@@ -136,6 +208,8 @@ export class AdminService {
       totalMessages,
       totalRooms,
       messagesThisHour,
+      recentUsers,
+      messagesPerDay,
     };
   }
 

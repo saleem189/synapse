@@ -27,6 +27,18 @@ export interface ServerToClientEvents {
   "message-updated": (data: { messageId: string; content: string; updatedAt: string }) => void;
   "message-deleted": (data: { messageId: string }) => void;
   "reaction-updated": (data: { messageId: string; reactions: Record<string, Array<{ id: string; name: string; avatar: string | null }>> }) => void;
+  // Video call events
+  "incoming-call": (data: { callId: string; from: string; fromName: string; fromAvatar?: string | null; roomId: string; callType: 'video' | 'audio' }) => void;
+  "call-accepted": (data: { callId: string; roomId: string; participantId: string }) => void;
+  "call-rejected": (data: { callId: string; roomId: string; participantId: string }) => void;
+  "call-ended": (data: { callId: string; roomId: string; endedBy: string }) => void;
+  "call-joined": (data: { callId: string; roomId: string; participantId: string; participantName: string }) => void;
+  "call-left": (data: { callId: string; roomId: string; participantId: string }) => void;
+  "webrtc-signal": (data: { from: string; signal: any; callId: string }) => void;
+  "call-participant-muted": (data: { callId: string; participantId: string; isMuted: boolean }) => void;
+  "call-participant-video-toggled": (data: { callId: string; participantId: string; hasVideo: boolean }) => void;
+  "call-screen-share-started": (data: { callId: string; participantId: string }) => void;
+  "call-screen-share-stopped": (data: { callId: string; participantId: string }) => void;
   error: (message: string) => void;
 }
 
@@ -42,6 +54,17 @@ export interface ClientToServerEvents {
   "stop-typing": (data: { roomId: string; userId: string }) => void;
   "user-connect": (userId: string) => void;
   "get-online-users": () => void;
+  // Video call events
+  "call-initiate": (data: { roomId: string; targetUserId?: string; callType: 'video' | 'audio' }) => void;
+  "call-accept": (data: { callId: string; roomId: string }) => void;
+  "call-reject": (data: { callId: string; roomId: string }) => void;
+  "call-end": (data: { callId: string; roomId: string }) => void;
+  "call-join": (data: { callId: string; roomId: string }) => void;
+  "call-leave": (data: { callId: string; roomId: string }) => void;
+  "webrtc-signal": (data: { to: string; signal: any; callId: string }) => void;
+  "call-mute": (data: { callId: string; roomId: string; isMuted: boolean }) => void;
+  "call-video-toggle": (data: { callId: string; roomId: string; hasVideo: boolean }) => void;
+  "call-screen-share": (data: { callId: string; roomId: string; isSharing: boolean }) => void;
 }
 
 export interface MessagePayload {

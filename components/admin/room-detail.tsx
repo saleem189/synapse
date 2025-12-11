@@ -107,15 +107,15 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
       <div className="flex items-center gap-4">
         <Link
           href="/admin/rooms"
-          className="w-10 h-10 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center"
+          className="w-10 h-10 rounded-lg hover:bg-accent flex items-center justify-center"
         >
-          <ArrowLeft className="w-5 h-5 text-surface-500" />
+          <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             Room Details
           </h1>
-          <p className="text-surface-500 dark:text-surface-400">
+          <p className="text-muted-foreground">
             View and manage room information
           </p>
         </div>
@@ -125,7 +125,7 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Room Info Card */}
-          <div className="bg-white dark:bg-surface-900 rounded-2xl p-6 border border-surface-200 dark:border-surface-800">
+          <div className="bg-card rounded-2xl p-6 border border-border">
             <div className="flex items-start gap-4 mb-6">
               <div
                 className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold ${
@@ -137,15 +137,15 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
                 {room.isGroup ? <Hash className="w-8 h-8" /> : getInitials(room.name)}
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-bold text-surface-900 dark:text-white mb-1">
+                <h2 className="text-xl font-bold text-foreground mb-1">
                   {room.name}
                 </h2>
                 {room.description && (
-                  <p className="text-surface-500 dark:text-surface-400">
+                  <p className="text-muted-foreground">
                     {room.description}
                   </p>
                 )}
-                <div className="flex items-center gap-4 mt-3 text-sm text-surface-500">
+                <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <MessageSquare className="w-4 h-4" />
                     {room._count.messages + liveMessages} messages
@@ -161,20 +161,20 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-surface-200 dark:border-surface-800">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
               <div>
-                <p className="text-xs text-surface-500 mb-1">Owner</p>
-                <p className="font-medium text-surface-900 dark:text-white">
+                <p className="text-xs text-muted-foreground mb-1">Owner</p>
+                <p className="font-medium text-foreground">
                   {room.owner.name}
                 </p>
-                <p className="text-sm text-surface-500">{room.owner.email}</p>
+                <p className="text-sm text-muted-foreground">{room.owner.email}</p>
               </div>
               <div>
-                <p className="text-xs text-surface-500 mb-1">Created</p>
-                <p className="font-medium text-surface-900 dark:text-white">
+                <p className="text-xs text-muted-foreground mb-1">Created</p>
+                <p className="font-medium text-foreground">
                   {formatMessageTime(room.createdAt instanceof Date ? room.createdAt.toISOString() : room.createdAt)}
                 </p>
-                <p className="text-sm text-surface-500">
+                <p className="text-sm text-muted-foreground">
                   {new Date(room.createdAt).toLocaleDateString()}
                 </p>
               </div>
@@ -182,31 +182,31 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
           </div>
 
           {/* Recent Messages */}
-          <div className="bg-white dark:bg-surface-900 rounded-2xl p-6 border border-surface-200 dark:border-surface-800">
-            <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">
+          <div className="bg-card rounded-2xl p-6 border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
               Recent Messages ({room.messages.length})
             </h3>
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {room.messages.length === 0 ? (
-                <p className="text-center text-surface-500 py-8">No messages yet</p>
+                <p className="text-center text-muted-foreground py-8">No messages yet</p>
               ) : (
                 room.messages.map((message) => (
                   <div
                     key={message.id}
-                    className="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
+                    className="p-3 rounded-lg bg-muted"
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-blue-500 flex items-center justify-center text-white text-xs font-semibold">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground text-xs font-semibold">
                         {getInitials(message.sender.name)}
                       </div>
-                      <span className="font-medium text-sm text-surface-900 dark:text-white">
+                      <span className="font-medium text-sm text-foreground">
                         {message.sender.name}
                       </span>
-                      <span className="text-xs text-surface-400">
+                      <span className="text-xs text-muted-foreground">
                         {formatMessageTime(message.createdAt instanceof Date ? message.createdAt.toISOString() : message.createdAt)}
                       </span>
                     </div>
-                    <p className="text-sm text-surface-700 dark:text-surface-300">
+                    <p className="text-sm text-foreground">
                       {message.content}
                     </p>
                   </div>
@@ -219,8 +219,8 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Participants */}
-          <div className="bg-white dark:bg-surface-900 rounded-2xl p-6 border border-surface-200 dark:border-surface-800">
-            <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4 flex items-center gap-2">
+          <div className="bg-card rounded-2xl p-6 border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Users className="w-5 h-5" />
               Participants ({room.participants.length})
             </h3>
@@ -230,32 +230,32 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
                 return (
                   <div
                     key={participant.user.id}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800"
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent"
                   >
                     <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground text-sm font-semibold">
                         {getInitials(participant.user.name)}
                       </div>
                       {isOnline && (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-surface-900" />
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-surface-900 dark:text-white truncate">
+                      <p className="font-medium text-sm text-foreground truncate">
                         {participant.user.name}
                         {participant.user.id === room.owner.id && (
-                          <span className="text-xs text-surface-400 ml-1">(Owner)</span>
+                          <span className="text-xs text-muted-foreground ml-1">(Owner)</span>
                         )}
                       </p>
-                      <p className="text-xs text-surface-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {participant.user.email}
                       </p>
                     </div>
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${
                         isOnline
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-surface-100 text-surface-500 dark:bg-surface-800"
+                          ? "bg-green-100/20 text-green-600"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {isOnline ? "Online" : "Offline"}
@@ -267,8 +267,8 @@ export function RoomDetail({ room: initialRoom }: RoomDetailProps) {
           </div>
 
           {/* Actions */}
-          <div className="bg-white dark:bg-surface-900 rounded-2xl p-6 border border-surface-200 dark:border-surface-800">
-            <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">
+          <div className="bg-card rounded-2xl p-6 border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
               Actions
             </h3>
             <button

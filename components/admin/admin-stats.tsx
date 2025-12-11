@@ -73,7 +73,7 @@ export function AdminStats({ totalUsers, totalRooms, totalMessages }: AdminStats
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="bg-white dark:bg-surface-900 rounded-2xl p-5 border border-surface-200 dark:border-surface-800 relative overflow-hidden"
+          className="bg-card rounded-2xl p-5 border border-border relative overflow-hidden"
         >
           {/* Background gradient */}
           <div
@@ -100,10 +100,10 @@ export function AdminStats({ totalUsers, totalRooms, totalMessages }: AdminStats
               )}
             </div>
 
-            <p className="text-2xl font-bold text-surface-900 dark:text-white">
+            <p className="text-2xl font-bold text-foreground">
               {stat.value.toLocaleString()}
             </p>
-            <p className="text-sm text-surface-500 dark:text-surface-400">
+            <p className="text-sm text-muted-foreground">
               {stat.label}
             </p>
           </div>

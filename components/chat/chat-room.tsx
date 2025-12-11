@@ -5,9 +5,6 @@
 
 "use client";
 
-const EMPTY_MESSAGES: MessagePayload[] = [];
-
-
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 // Command components no longer needed here (moved to ChatRoomSearchDialog)
 import { MessageInput } from "./message-input";
 import { TypingIndicator } from "./typing-indicator";
@@ -49,7 +48,6 @@ const MessageEditModal = dynamic(
   { ssr: false }
 );
 import { MessageListErrorBoundary, MessageInputErrorBoundary } from "@/components/error-boundary";
-import { type MessagePayload } from "@/lib/socket";
 import { apiClient } from "@/lib/api-client";
 import { TIMEOUTS } from "@/lib/constants";
 import { useMessagesStore, useUserStore, useUIStore } from "@/lib/store";
@@ -62,6 +60,9 @@ import type { Message, MessageReactions } from "@/lib/types/message.types";
 import { VirtualizedMessageList } from "./virtualized-message-list";
 // Features
 import { PinnedMessagesPanel, type MentionableUser } from "@/features";
+import { type MessagePayload } from "@/lib/socket";
+
+const EMPTY_MESSAGES: MessagePayload[] = [];
 
 interface Participant {
   id: string;
@@ -216,6 +217,9 @@ export function ChatRoom({
   }, [roomId, initialMessages, messages, setMessages]);
 
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+
+  // Mobile detection
+  const isMobile = useIsMobile();
 
   // Use UI store for info panel, room settings modal, and message edit modal
   const {
@@ -917,7 +921,7 @@ export function ChatRoom({
   if (!currentUser) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -935,7 +939,7 @@ export function ChatRoom({
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface-50 dark:bg-surface-950">
+    <div className="flex-1 flex flex-col h-full bg-background">
       {/* Header */}
       <ChatRoomHeader
         roomName={roomName}
@@ -987,8 +991,22 @@ export function ChatRoom({
             ref={messagesContainerRef}
             className="flex-1 overflow-y-auto px-4 py-4"
           >
-            {/* Virtualized message list for performance with large message counts */}
-            {displayMessages.length > 50 ? (
+            {/* Empty State */}
+            {displayMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-12 px-4 text-center animate-in fade-in-50 duration-500">
+                <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center mb-4 animate-in zoom-in-95 duration-700">
+                  <Hash className="w-10 h-10 text-muted-foreground/60" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {isGroup ? "No messages yet" : "Start the conversation"}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  {isGroup
+                    ? "Be the first to send a message in this group"
+                    : "Send a message to start chatting"}
+                </p>
+              </div>
+            ) : displayMessages.length > 50 ? (
               <VirtualizedMessageList
                 messages={displayMessages}
                 groupedMessages={groupedMessages}
@@ -1020,7 +1038,7 @@ export function ChatRoom({
                   {/* Date separator */}
                   <div className="flex items-center gap-3 my-4">
                     <Separator className="flex-1" />
-                    <div className="px-3 py-1 rounded-full bg-surface-200/50 dark:bg-surface-800/50 text-xs text-surface-500 dark:text-surface-400 font-medium">
+                    <div className="px-3 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground font-medium">
                       {date === new Date().toLocaleDateString()
                         ? "Today"
                         : date ===
@@ -1089,9 +1107,9 @@ export function ChatRoom({
           </div>
         </MessageListErrorBoundary>
 
-        {/* Info Panel */}
-        {isInfoPanelOpen && (
-          <ScrollArea className="w-72 border-l border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
+        {/* Info Panel - Desktop Sidebar */}
+        {isInfoPanelOpen && !isMobile && (
+          <ScrollArea className="w-72 border-l border-border bg-background hidden md:block">
             <div className="p-4">
               {/* Room Info */}
               <div className="text-center mb-6">
@@ -1100,15 +1118,15 @@ export function ChatRoom({
                     "w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-2xl font-bold",
                     isGroup
                       ? "bg-gradient-to-br from-accent-400 to-pink-500"
-                      : "bg-gradient-to-br from-primary-400 to-blue-500"
+                      : "bg-gradient-to-br from-primary to-accent"
                   )}
                 >
                   {isGroup ? <Hash className="w-10 h-10" /> : getInitials(roomName)}
                 </div>
-                <h3 className="font-semibold text-lg text-surface-900 dark:text-white">
+                <h3 className="font-semibold text-lg text-foreground">
                   {roomName}
                 </h3>
-                <p className="text-sm text-surface-500 dark:text-surface-400">
+                <p className="text-sm text-muted-foreground">
                   {isGroup ? "Group Chat" : "Direct Message"}
                 </p>
               </div>
@@ -1127,48 +1145,95 @@ export function ChatRoom({
                 </div>
               )}
 
-              {/* Participants List */}
-              <div>
-                <h4 className="font-semibold text-sm text-surface-900 dark:text-white mb-3">
-                  Members ({participants.length})
-                </h4>
-                <div className="space-y-2">
-                  {participants.map((participant) => (
-                    <div
-                      key={participant.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-                    >
-                      <Avatar className="w-10 h-10 bg-gradient-to-br from-primary-400 to-blue-500">
-                        <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary-400 to-blue-500 text-white text-sm font-semibold">
-                          {getInitials(participant.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-surface-900 dark:text-white truncate">
-                          {participant.name}
-                          {participant.id === currentUser?.id && " (You)"}
-                        </p>
-                        <p className="text-xs text-surface-500 dark:text-surface-400">
-                          {participant.status === "online" ? (
-                            <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                              Online
-                            </span>
-                          ) : (
-                            participant.lastSeen
-                              ? `Last seen ${new Date(participant.lastSeen).toLocaleDateString()}`
-                              : "Offline"
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Room Members Panel */}
+              <RoomMembersPanel
+                roomId={roomId}
+                participants={participants.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  avatar: p.avatar,
+                  status: p.status,
+                  role: p.role,
+                  isOwner: p.isOwner,
+                }))}
+                currentUserId={currentUser?.id || ""}
+                isRoomAdmin={isRoomAdmin || false}
+                isGroup={isGroup}
+                onUpdate={() => {
+                  router.refresh();
+                }}
+              />
             </div>
           </ScrollArea>
         )}
+
+        {/* Info Panel - Mobile Sheet */}
+        <Sheet open={isInfoPanelOpen && isMobile} onOpenChange={(open) => {
+          if (!open) closeInfoPanel();
+        }}>
+          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{roomName}</SheetTitle>
+              <SheetDescription>
+                {isGroup ? "Group Chat" : "Direct Message"}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6">
+              {/* Room Info */}
+              <div className="text-center mb-6">
+                <div
+                  className={cn(
+                    "w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-2xl font-bold",
+                    isGroup
+                      ? "bg-gradient-to-br from-accent-400 to-pink-500"
+                      : "bg-gradient-to-br from-primary to-accent"
+                  )}
+                >
+                  {isGroup ? <Hash className="w-10 h-10" /> : getInitials(roomName)}
+                </div>
+                <h3 className="font-semibold text-lg text-foreground">
+                  {roomName}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {isGroup ? "Group Chat" : "Direct Message"}
+                </p>
+              </div>
+
+              {/* Room Settings Button (Room Admins only) */}
+              {isRoomAdmin && (
+                <div className="mb-4">
+                  <Button
+                    onClick={openRoomSettingsModal}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Room Settings
+                  </Button>
+                </div>
+              )}
+
+              {/* Room Members Panel */}
+              <RoomMembersPanel
+                roomId={roomId}
+                participants={participants.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  avatar: p.avatar,
+                  status: p.status,
+                  role: p.role,
+                  isOwner: p.isOwner,
+                }))}
+                currentUserId={currentUser?.id || ""}
+                isRoomAdmin={isRoomAdmin || false}
+                isGroup={isGroup}
+                onUpdate={() => {
+                  router.refresh();
+                }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* Message Input */}
@@ -1177,7 +1242,7 @@ export function ChatRoom({
           router.refresh();
         }}
       >
-        <div className="border-t border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
+        <div className="border-t border-border bg-background">
           <MessageInput
             onSendMessage={handleSendMessage}
             onTyping={handleTyping}

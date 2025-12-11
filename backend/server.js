@@ -199,6 +199,9 @@ const onlineUsers = new Map(); // userId -> Set<socketId>
 const socketToUser = new Map(); // socketId -> userId
 const socketLastRequest = new Map(); // socketId -> timestamp (for debouncing get-online-users)
 
+// Track active calls: Map<callId, { roomId, participants, callType, startedAt, initiatorId, dbCallSessionId }>
+const activeCalls = new Map();
+
 function getOnlineUserIds() {
   return Array.from(onlineUsers.keys());
 }
@@ -273,6 +276,8 @@ io.use(async (socket, next) => {
       where: { id: token },
       select: {
         id: true,
+        name: true,
+        avatar: true,
         status: true,
         role: true,
       },
@@ -289,10 +294,12 @@ io.use(async (socket, next) => {
       return next(new Error('User account is banned'));
     }
 
-    // Store user ID and role on socket for later use
+    // Store user ID, name, avatar, and role on socket for later use
     socket.userId = user.id;
+    socket.userName = user.name;
+    socket.userAvatar = user.avatar;
     socket.userRole = user.role;
-    logger.log(`✅ [Auth] Socket ${socket.id} authenticated as user ${user.id} (${user.role})`);
+    logger.log(`✅ [Auth] Socket ${socket.id} authenticated as user ${user.id} (${user.name}, ${user.role})`);
     next();
   } catch (error) {
     logger.error(`❌ [Auth] Authentication error:`, error);
@@ -732,11 +739,515 @@ io.on("connection", (socket) => {
     });
   });
 
+  // =====================
+  // VIDEO CALL HANDLING
+  // =====================
+  // Generate unique call ID
+  function generateCallId() {
+    return `call-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Call initiate
+  socket.on("call-initiate", async ({ roomId, targetUserId, callType }) => {
+    if (!roomId || !socket.userId) {
+      logger.warn(`❌ Invalid call-initiate: missing roomId or userId`);
+      return;
+    }
+
+    const callId = generateCallId();
+    const callerId = socket.userId;
+    const callerName = socket.userName || 'Unknown';
+    const callerAvatar = socket.userAvatar || null;
+
+    logger.log(`📞 Call initiated: ${callId} by ${callerId} in room ${roomId} (${callType})`);
+
+    try {
+      // Create call session in database
+      const dbCallSession = await prisma.callSession.create({
+        data: {
+          id: callId,
+          roomId,
+          callType: callType.toUpperCase(), // VIDEO or AUDIO
+          status: 'ACTIVE',
+          participants: {
+            create: {
+              userId: callerId,
+              hadVideo: callType === 'video',
+              wasMuted: false,
+            },
+          },
+        },
+      });
+
+      logger.log(`💾 Call session saved to database: ${dbCallSession.id}`);
+
+      // Store call session in memory
+      activeCalls.set(callId, {
+        roomId,
+        callType,
+        participants: new Set([callerId]),
+        startedAt: new Date(),
+        initiatorId: callerId,
+        dbCallSessionId: dbCallSession.id,
+      });
+    } catch (error) {
+      logger.error(`❌ Failed to create call session in database:`, error);
+      // Continue with in-memory only if database fails
+      activeCalls.set(callId, {
+        roomId,
+        callType,
+        participants: new Set([callerId]),
+        startedAt: new Date(),
+        initiatorId: callerId,
+        dbCallSessionId: null,
+      });
+    }
+
+    // If targetUserId is provided (1-on-1 call), send to specific user
+    if (targetUserId) {
+      // Find socket for target user
+      const targetSocket = Array.from(io.sockets.sockets.values()).find(
+        (s) => s.userId === targetUserId && s.connected
+      );
+
+      if (targetSocket) {
+        targetSocket.emit("incoming-call", {
+          callId,
+          from: callerId,
+          fromName: callerName,
+          fromAvatar: callerAvatar,
+          roomId,
+          callType,
+        });
+        logger.log(`📞 Incoming call sent to ${targetUserId}`);
+      } else {
+        logger.warn(`⚠️ Target user ${targetUserId} not found or not connected`);
+        // Clean up call
+        activeCalls.delete(callId);
+      }
+    } else {
+      // Group call - notify all participants in the room
+      const roomParticipants = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
+      roomParticipants.forEach((socketId) => {
+        const participantSocket = io.sockets.sockets.get(socketId);
+        if (participantSocket && participantSocket.userId !== callerId) {
+          participantSocket.emit("incoming-call", {
+            callId,
+            from: callerId,
+            fromName: callerName,
+            fromAvatar: callerAvatar,
+            roomId,
+            callType,
+          });
+        }
+      });
+      logger.log(`📞 Group call initiated, notified ${roomParticipants.length - 1} participants`);
+    }
+  });
+
+  // Call accept
+  socket.on("call-accept", async ({ callId, roomId }) => {
+    if (!callId || !roomId || !socket.userId) {
+      logger.warn(`❌ Invalid call-accept: missing callId, roomId, or userId`);
+      return;
+    }
+
+    const call = activeCalls.get(callId);
+    if (!call) {
+      logger.warn(`⚠️ Call ${callId} not found`);
+      return;
+    }
+
+    const participantId = socket.userId;
+    call.participants.add(participantId);
+
+    logger.log(`✅ Call accepted: ${callId} by ${participantId}`);
+
+    // Add participant to database
+    if (call.dbCallSessionId) {
+      try {
+        await prisma.callParticipant.create({
+          data: {
+            callSessionId: call.dbCallSessionId,
+            userId: participantId,
+            hadVideo: call.callType === 'video',
+            wasMuted: false,
+          },
+        });
+        logger.log(`💾 Participant added to database: ${participantId}`);
+      } catch (error) {
+        // Ignore duplicate participant errors (user already in call)
+        if (error.code !== 'P2002') {
+          logger.error(`❌ Failed to add participant to database:`, error);
+        }
+      }
+    }
+
+    // Notify all participants that someone joined
+    io.to(roomId).emit("call-accepted", {
+      callId,
+      roomId,
+      participantId,
+    });
+
+    // Also emit call-joined event
+    io.to(roomId).emit("call-joined", {
+      callId,
+      roomId,
+      participantId,
+      participantName: socket.userName || 'Unknown',
+    });
+  });
+
+  // Call reject
+  socket.on("call-reject", async ({ callId, roomId }) => {
+    if (!callId || !roomId || !socket.userId) {
+      return;
+    }
+
+    const participantId = socket.userId;
+    logger.log(`❌ Call rejected: ${callId} by ${participantId}`);
+
+    const call = activeCalls.get(callId);
+
+    // Update call status to REJECTED in database
+    if (call && call.dbCallSessionId) {
+      try {
+        await prisma.callSession.update({
+          where: { id: call.dbCallSessionId },
+          data: { status: 'REJECTED' },
+        });
+        logger.log(`💾 Call status updated to REJECTED in database`);
+      } catch (error) {
+        logger.error(`❌ Failed to update call status:`, error);
+      }
+    }
+
+    // Notify all participants
+    io.to(roomId).emit("call-rejected", {
+      callId,
+      roomId,
+      participantId,
+    });
+
+    // If initiator rejected, clean up call
+    if (call && call.initiatorId === participantId) {
+      activeCalls.delete(callId);
+    }
+  });
+
+  // Call end
+  socket.on("call-end", async ({ callId, roomId }) => {
+    if (!callId || !roomId || !socket.userId) {
+      return;
+    }
+
+    const endedBy = socket.userId;
+    logger.log(`🔚 Call ended: ${callId} by ${endedBy}`);
+
+    const call = activeCalls.get(callId);
+
+    // Update call session in database
+    if (call && call.dbCallSessionId) {
+      try {
+        const startedAt = call.startedAt;
+        const endedAt = new Date();
+        const duration = Math.floor((endedAt - startedAt) / 1000); // Duration in seconds
+
+        await prisma.callSession.update({
+          where: { id: call.dbCallSessionId },
+          data: {
+            status: 'ENDED',
+            endedAt,
+            duration,
+          },
+        });
+
+        // Update all participants' leftAt timestamp
+        await prisma.callParticipant.updateMany({
+          where: {
+            callSessionId: call.dbCallSessionId,
+            leftAt: null, // Only update those who haven't left yet
+          },
+          data: {
+            leftAt: endedAt,
+          },
+        });
+
+        logger.log(`💾 Call session updated in database: ended, duration ${duration}s`);
+      } catch (error) {
+        logger.error(`❌ Failed to update call session in database:`, error);
+      }
+    }
+
+    // Notify all participants
+    io.to(roomId).emit("call-ended", {
+      callId,
+      roomId,
+      endedBy,
+    });
+
+    // Clean up call
+    activeCalls.delete(callId);
+  });
+
+  // WebRTC signal forwarding
+  socket.on("webrtc-signal", ({ to, signal, callId }) => {
+    if (!to || !signal || !callId || !socket.userId) {
+      return;
+    }
+
+    const from = socket.userId;
+    logger.log(`📡 WebRTC signal from ${from} to ${to} (call: ${callId})`);
+
+    // Find target socket
+    const targetSocket = Array.from(io.sockets.sockets.values()).find(
+      (s) => s.userId === to && s.connected
+    );
+
+    if (targetSocket) {
+      targetSocket.emit("webrtc-signal", {
+        from,
+        signal,
+        callId,
+      });
+    } else {
+      logger.warn(`⚠️ Target user ${to} not found for WebRTC signal`);
+    }
+  });
+
+  // Call mute/unmute
+  socket.on("call-mute", ({ callId, roomId, isMuted }) => {
+    if (!callId || !roomId || !socket.userId) {
+      return;
+    }
+
+    const participantId = socket.userId;
+    logger.log(`🔇 Participant ${participantId} ${isMuted ? 'muted' : 'unmuted'} (call: ${callId})`);
+
+    // Broadcast to all participants
+    io.to(roomId).emit("call-participant-muted", {
+      callId,
+      participantId,
+      isMuted,
+    });
+  });
+
+  // Call video toggle
+  socket.on("call-video-toggle", ({ callId, roomId, hasVideo }) => {
+    if (!callId || !roomId || !socket.userId) {
+      return;
+    }
+
+    const participantId = socket.userId;
+    logger.log(`📹 Participant ${participantId} video ${hasVideo ? 'on' : 'off'} (call: ${callId})`);
+
+    // Broadcast to all participants
+    io.to(roomId).emit("call-participant-video-toggled", {
+      callId,
+      participantId,
+      hasVideo,
+    });
+  });
+
+  // Call screen share
+  socket.on("call-screen-share", ({ callId, roomId, isSharing }) => {
+    if (!callId || !roomId || !socket.userId) {
+      return;
+    }
+
+    const participantId = socket.userId;
+    logger.log(`🖥️ Participant ${participantId} screen share ${isSharing ? 'started' : 'stopped'} (call: ${callId})`);
+
+    // Broadcast to all participants
+    if (isSharing) {
+      io.to(roomId).emit("call-screen-share-started", {
+        callId,
+        participantId,
+      });
+    } else {
+      io.to(roomId).emit("call-screen-share-stopped", {
+        callId,
+        participantId,
+      });
+    }
+  });
+
+  // Call join (for group calls)
+  socket.on("call-join", async ({ callId, roomId }) => {
+    if (!callId || !roomId || !socket.userId) {
+      return;
+    }
+
+    const call = activeCalls.get(callId);
+    if (!call) {
+      logger.warn(`⚠️ Call ${callId} not found for join`);
+      return;
+    }
+
+    const participantId = socket.userId;
+    call.participants.add(participantId);
+
+    logger.log(`👋 Participant ${participantId} joined call ${callId}`);
+
+    // Add participant to database
+    if (call.dbCallSessionId) {
+      try {
+        await prisma.callParticipant.create({
+          data: {
+            callSessionId: call.dbCallSessionId,
+            userId: participantId,
+            hadVideo: call.callType === 'video',
+            wasMuted: false,
+          },
+        });
+        logger.log(`💾 Participant added to database: ${participantId}`);
+      } catch (error) {
+        // Ignore duplicate participant errors (user already in call)
+        if (error.code !== 'P2002') {
+          logger.error(`❌ Failed to add participant to database:`, error);
+        }
+      }
+    }
+
+    // Notify all participants
+    io.to(roomId).emit("call-joined", {
+      callId,
+      roomId,
+      participantId,
+      participantName: socket.userName || 'Unknown',
+    });
+  });
+
+  // Call leave
+  socket.on("call-leave", async ({ callId, roomId }) => {
+    if (!callId || !roomId || !socket.userId) {
+      return;
+    }
+
+    const call = activeCalls.get(callId);
+    if (call) {
+      call.participants.delete(socket.userId);
+    }
+
+    const participantId = socket.userId;
+    logger.log(`👋 Participant ${participantId} left call ${callId}`);
+
+    // Update participant's leftAt in database
+    if (call && call.dbCallSessionId) {
+      try {
+        await prisma.callParticipant.updateMany({
+          where: {
+            callSessionId: call.dbCallSessionId,
+            userId: participantId,
+            leftAt: null, // Only update if not already set
+          },
+          data: {
+            leftAt: new Date(),
+          },
+        });
+        logger.log(`💾 Participant leftAt updated in database: ${participantId}`);
+      } catch (error) {
+        logger.error(`❌ Failed to update participant in database:`, error);
+      }
+    }
+
+    // Notify all participants
+    io.to(roomId).emit("call-left", {
+      callId,
+      roomId,
+      participantId,
+    });
+
+    // If no participants left, clean up call and update database
+    if (call && call.participants.size === 0) {
+      if (call.dbCallSessionId) {
+        try {
+          const startedAt = call.startedAt;
+          const endedAt = new Date();
+          const duration = Math.floor((endedAt - startedAt) / 1000);
+
+          await prisma.callSession.update({
+            where: { id: call.dbCallSessionId },
+            data: {
+              status: 'ENDED',
+              endedAt,
+              duration,
+            },
+          });
+          logger.log(`💾 Call session ended in database (no participants left)`);
+        } catch (error) {
+          logger.error(`❌ Failed to update call session:`, error);
+        }
+      }
+      activeCalls.delete(callId);
+      logger.log(`🧹 Cleaned up empty call ${callId}`);
+    }
+  });
+
   // Disconnect
-  socket.on("disconnect", (reason) => {
+  socket.on("disconnect", async (reason) => {
     logger.log(`❌ Disconnected: ${socket.id} (${reason})`);
     removeOnlineUser(socket.id);
     socketLastRequest.delete(socket.id); // Clean up debounce tracking
+
+    // Clean up any calls the user was in
+    if (socket.userId) {
+      // Use for...of loop to properly await async operations
+      for (const [callId, call] of activeCalls.entries()) {
+        if (call.participants.has(socket.userId)) {
+          call.participants.delete(socket.userId);
+
+          // Update participant's leftAt in database
+          if (call.dbCallSessionId) {
+            try {
+              await prisma.callParticipant.updateMany({
+                where: {
+                  callSessionId: call.dbCallSessionId,
+                  userId: socket.userId,
+                  leftAt: null,
+                },
+                data: {
+                  leftAt: new Date(),
+                },
+              });
+            } catch (error) {
+              logger.error(`❌ Failed to update participant on disconnect:`, error);
+            }
+          }
+
+          // Notify others
+          io.to(call.roomId).emit("call-left", {
+            callId,
+            roomId: call.roomId,
+            participantId: socket.userId,
+          });
+
+          // Clean up if empty
+          if (call.participants.size === 0) {
+            if (call.dbCallSessionId) {
+              try {
+                const startedAt = call.startedAt;
+                const endedAt = new Date();
+                const duration = Math.floor((endedAt - startedAt) / 1000);
+
+                await prisma.callSession.update({
+                  where: { id: call.dbCallSessionId },
+                  data: {
+                    status: 'ENDED',
+                    endedAt,
+                    duration,
+                  },
+                });
+              } catch (error) {
+                logger.error(`❌ Failed to update call session on disconnect:`, error);
+              }
+            }
+            activeCalls.delete(callId);
+          }
+        }
+      }
+    }
 
     // Log socket disconnect
     writeLog({
@@ -777,5 +1288,10 @@ startServer().catch((error) => {
 });
 
 // Graceful shutdown
+// Increase max listeners to prevent warnings
+if (process.setMaxListeners) {
+  process.setMaxListeners(15);
+}
+
 process.on("SIGTERM", () => httpServer.close(() => process.exit(0)));
 process.on("SIGINT", () => httpServer.close(() => process.exit(0)));

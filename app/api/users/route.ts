@@ -41,7 +41,8 @@ export async function GET(): Promise<NextResponse> {
         email: user.email,
         avatar: user.avatar,
         status: user.status,
-        lastSeen: user.lastSeen,
+        // Standardize date serialization: always use ISO strings
+        lastSeen: user.lastSeen ? (user.lastSeen instanceof Date ? user.lastSeen.toISOString() : user.lastSeen) : null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 

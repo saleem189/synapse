@@ -11,6 +11,9 @@ import { Mic, Square, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useMicrophone } from "@/lib/permissions";
+import { logger } from "@/lib/logger";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob, duration: number) => void;
@@ -46,7 +49,10 @@ export function VoiceRecorder({
       toast.error("Microphone permission denied. Please allow microphone access to record voice messages.");
     },
     onError: (error) => {
-      console.error("Microphone permission error:", error);
+      logger.error("Microphone permission error", error instanceof Error ? error : new Error(String(error)), {
+        component: 'VoiceRecorder',
+        action: 'requestPermission',
+      });
       toast.error("Failed to access microphone. Please try again.");
     },
   });
@@ -147,7 +153,10 @@ export function VoiceRecorder({
         });
       }, 1000);
     } catch (error) {
-      console.error("Error starting recording:", error);
+      logger.error("Error starting recording", error instanceof Error ? error : new Error(String(error)), {
+        component: 'VoiceRecorder',
+        action: 'startRecording',
+      });
       
       // Show user-friendly error message
       if (error instanceof Error) {
@@ -213,9 +222,9 @@ export function VoiceRecorder({
 
   if (isProcessing) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-surface-100 dark:bg-surface-800 rounded-lg">
-        <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
-        <p className="text-sm text-surface-700 dark:text-surface-300">
+      <div className="flex items-center gap-3 px-4 py-3 bg-muted rounded-lg">
+        <Loader2 className="w-5 h-5 text-primary animate-spin" />
+        <p className="text-sm text-foreground">
           Processing audio...
         </p>
       </div>
@@ -231,33 +240,47 @@ export function VoiceRecorder({
             Recording {formatDuration(duration)}
           </span>
         </div>
-        <button
-          onClick={stopRecording}
-          className="w-8 h-8 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-colors"
-          title="Stop and send"
-        >
-          <Square className="w-4 h-4" />
-        </button>
-        <button
-          onClick={cancelRecording}
-          className="w-8 h-8 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 flex items-center justify-center transition-colors"
-          title="Cancel"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={stopRecording}
+                size="icon"
+                variant="destructive"
+                className="w-8 h-8 rounded-full"
+              >
+                <Square className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Stop and send</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={cancelRecording}
+                size="icon"
+                variant="ghost"
+                className="w-8 h-8 rounded-full"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Cancel</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     );
   }
 
   return (
-    <button
+    <Button
       onClick={startRecording}
       disabled={isRequesting}
+      size="icon"
       className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+        "w-10 h-10 rounded-xl transition-all duration-200",
         "hover:scale-110 active:scale-95",
-        "bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-500/25",
-        isRequesting && "opacity-50 cursor-not-allowed"
+        "shadow-lg shadow-primary/25"
       )}
       title={
         isRequesting
@@ -272,7 +295,7 @@ export function VoiceRecorder({
       ) : (
         <Mic className="w-5 h-5" />
       )}
-    </button>
+    </Button>
   );
 }
 

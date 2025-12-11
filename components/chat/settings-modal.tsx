@@ -5,12 +5,15 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, User, Bell, Moon, Sun, Shield, LogOut, Camera, Trash2, Loader2 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { User, Bell, Moon, Sun, Monitor, Shield, LogOut, Camera, Trash2, Loader2, Square, Wand2 } from "lucide-react";
+import { useTheme as useNextTheme } from "next-themes";
+import { useTheme, useStyle } from "@/lib/design-system/providers";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { cn, getInitials } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
+import { useForm } from "react-hook-form";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,7 +36,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { useUserStore } from "@/lib/store";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
@@ -44,22 +58,45 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  // ============================================
+  // ALL HOOKS MUST BE CALLED UNCONDITIONALLY
+  // ============================================
+  // Call all hooks first, in the same order every render
+  
   // Get user from store
   const user = useUserStore((state) => state.user);
-  const { theme, setTheme } = useTheme();
+  
+  // Use push notifications hook
+  const { subscribe, unsubscribe, isSubscribed, permission, isLoading: isPushLoading } = usePushNotifications();
+  
+  // Design system theme and style hooks (must be called unconditionally per React rules)
+  const theme = useTheme();
+  const style = useStyle();
+  const nextTheme = useNextTheme();
+  
+  // Local state hooks
   const [activeTab, setActiveTab] = useState<"profile" | "notifications" | "appearance">("profile");
   const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
   const [isUploading, setIsUploading] = useState(false);
   const [removeAvatarDialogOpen, setRemoveAvatarDialogOpen] = useState(false);
 
+  // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use push notifications hook
-  const { subscribe, unsubscribe, isSubscribed, permission, isLoading: isPushLoading } = usePushNotifications();
+  // Next-themes for backward compatibility (handles class toggling)
+  const { setTheme: setNextTheme } = nextTheme;
+
+  // Form setup with react-hook-form
+  const form = useForm({
+    defaultValues: {
+      name: user?.name || "",
+      email: user?.email || "",
+    },
+  });
 
   // Early return after all hooks are called
   if (!user) {
-    return null; // Or show loading state
+    return null;
   }
 
   const handleAvatarClick = () => {
@@ -94,7 +131,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         window.location.reload(); // TODO: Replace with proper state update
       }
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      logger.error("Error uploading avatar", error instanceof Error ? error : new Error(String(error)), {
+        component: 'SettingsModal',
+        action: 'uploadAvatar',
+        userId: user.id,
+      });
       toast.error("An error occurred while uploading the profile picture");
     } finally {
       setIsUploading(false);
@@ -114,7 +155,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         window.location.reload(); // TODO: Replace with proper state update
       }
     } catch (error) {
-      console.error("Error removing avatar:", error);
+      logger.error("Error removing avatar", error instanceof Error ? error : new Error(String(error)), {
+        component: 'SettingsModal',
+        action: 'removeAvatar',
+        userId: user.id,
+      });
       toast.error("An error occurred while removing the profile picture");
     }
   };
@@ -122,256 +167,327 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-surface-200 dark:border-surface-800">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
             Manage your profile, notifications, and appearance preferences.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex h-[500px] overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-48 p-4 space-y-1">
-            <Separator orientation="vertical" className="absolute left-48 top-0 bottom-0" />
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                activeTab === "profile"
-                  ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-                  : "text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"
-              )}
-            >
-              <User className="w-4 h-4" />
-              <span className="text-sm font-medium">Profile</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("notifications")}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                activeTab === "notifications"
-                  ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-                  : "text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"
-              )}
-            >
-              <Bell className="w-4 h-4" />
-              <span className="text-sm font-medium">Notifications</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("appearance")}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                activeTab === "appearance"
-                  ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-                  : "text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"
-              )}
-            >
-              {theme === "dark" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-              <span className="text-sm font-medium">Appearance</span>
-            </button>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            setActiveTab(value as "profile" | "notifications" | "appearance");
+          }}
+          className="flex h-[500px] overflow-hidden"
+        >
+          {/* Sidebar Navigation */}
+          <div className="w-48 border-r border-border p-4">
+            <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 gap-1">
+              <TabsTrigger
+                value="profile"
+                className="w-full justify-start gap-3 px-3 py-2 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <User className="w-4 h-4" />
+                <span className="text-sm font-medium">Profile</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="notifications"
+                className="w-full justify-start gap-3 px-3 py-2 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="text-sm font-medium">Notifications</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="appearance"
+                className="w-full justify-start gap-3 px-3 py-2 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                {theme.resolvedTheme === "dark" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                <span className="text-sm font-medium">Appearance</span>
+              </TabsTrigger>
+            </TabsList>
           </div>
 
           {/* Content */}
           <ScrollArea className="flex-1 p-6">
-            {activeTab === "profile" && (
+              <TabsContent value="profile" className="mt-0">
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Profile Information</h3>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Profile Information</CardTitle>
+                    <CardDescription>
+                      Update your profile details and avatar
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
 
-                  <div className="space-y-6">
-                    {/* Profile Picture */}
-                    <div>
-                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">
-                        Profile Picture
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <Avatar className="w-20 h-20 border-2 border-surface-200 dark:border-surface-700">
-                            <AvatarImage src={avatar || undefined} alt={user.name} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary-400 to-blue-500 text-white text-xl font-semibold">
-                              {getInitials(user.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          {isUploading && (
-                            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
-                              <Loader2 className="w-6 h-6 text-white animate-spin" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <button
-                            onClick={handleAvatarClick}
-                            disabled={isUploading}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 transition-colors disabled:opacity-50"
-                          >
-                            <Camera className="w-4 h-4" />
-                            <span className="text-sm font-medium">
-                              {avatar ? "Change Picture" : "Upload Picture"}
-                            </span>
-                          </button>
-                          {avatar && (
-                            <button
-                              onClick={() => setRemoveAvatarDialogOpen(true)}
+                  <Form {...form}>
+                    <form className="space-y-6">
+                      {/* Profile Picture */}
+                      <FormItem>
+                        <FormLabel>Profile Picture</FormLabel>
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <Avatar className="w-20 h-20 border-2 border-border">
+                              <AvatarImage src={avatar || undefined} alt={user.name} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xl font-semibold">
+                                {getInitials(user.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {isUploading && (
+                              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                                <Loader2 className="w-6 h-6 text-white animate-spin" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              type="button"
+                              onClick={handleAvatarClick}
                               disabled={isUploading}
-                              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
+                              variant="secondary"
+                              className="flex items-center gap-2"
                             >
-                              <Trash2 className="w-4 h-4" />
-                              <span className="text-sm font-medium">Remove</span>
-                            </button>
-                          )}
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                          />
-                          <p className="text-xs text-surface-500">
-                            JPG, PNG, GIF or WebP. Max 5MB
-                          </p>
+                              <Camera className="w-4 h-4" />
+                              <span className="text-sm font-medium">
+                                {avatar ? "Change Picture" : "Upload Picture"}
+                              </span>
+                            </Button>
+                            {avatar && (
+                              <Button
+                                type="button"
+                                onClick={() => setRemoveAvatarDialogOpen(true)}
+                                disabled={isUploading}
+                                variant="destructive"
+                                className="flex items-center gap-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span className="text-sm font-medium">Remove</span>
+                              </Button>
+                            )}
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handleFileSelect}
+                              className="hidden"
+                            />
+                            <FormDescription>
+                              JPG, PNG, GIF or WebP. Max 5MB
+                            </FormDescription>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </FormItem>
 
-                    <div>
-                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-                        Name
-                      </label>
-                      <Input
-                        type="text"
-                        defaultValue={user.name}
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-                        Email
-                      </label>
-                      <Input
-                        type="email"
-                        defaultValue={user.email}
-                        disabled
+
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled />
+                            </FormControl>
+                            <FormDescription>Email cannot be changed</FormDescription>
+                          </FormItem>
+                        )}
                       />
-                      <p className="text-xs text-surface-400 mt-1">Email cannot be changed</p>
-                    </div>
-                    {user.role === "ADMIN" && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
-                        <Shield className="w-4 h-4 text-red-500" />
-                        <span className="text-sm text-red-600 dark:text-red-400">Administrator Account</span>
-                      </div>
-                    )}
-                    <Button variant="default" className="w-full">Save Changes</Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "notifications" && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Notification Settings</h3>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
-                      <div>
-                        <p className="font-medium text-surface-900 dark:text-white">Browser Notifications</p>
-                        <p className="text-sm text-surface-500">Get notified when you receive new messages</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isSubscribed}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              subscribe();
-                            } else {
-                              unsubscribe();
-                            }
-                          }}
-                          disabled={permission === 'denied' || isPushLoading}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-surface-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-surface-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-surface-600 peer-checked:bg-primary-600"></div>
-                      </label>
-                    </div>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-surface-50 dark:bg-surface-800">
-                      <div>
-                        <p className="font-medium text-surface-900 dark:text-white">Sound Notifications</p>
-                        <p className="text-sm text-surface-500">Play sound when receiving messages</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-surface-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-surface-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-surface-600 peer-checked:bg-primary-600"></div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "appearance" && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Appearance</h3>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <button
-                        onClick={() => setTheme("light")}
-                        className={cn(
-                          "p-4 rounded-lg border-2 transition-all",
-                          theme === "light"
-                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
-                            : "border-surface-200 dark:border-surface-700 hover:border-surface-300"
-                        )}
-                      >
-                        <Sun className="w-6 h-6 mx-auto mb-2 text-surface-600 dark:text-surface-400" />
-                        <p className="text-sm font-medium text-surface-900 dark:text-white">Light</p>
-                      </button>
-                      <button
-                        onClick={() => setTheme("dark")}
-                        className={cn(
-                          "p-4 rounded-lg border-2 transition-all",
-                          theme === "dark"
-                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
-                            : "border-surface-200 dark:border-surface-700 hover:border-surface-300"
-                        )}
-                      >
-                        <Moon className="w-6 h-6 mx-auto mb-2 text-surface-600 dark:text-surface-400" />
-                        <p className="text-sm font-medium text-surface-900 dark:text-white">Dark</p>
-                      </button>
-                      <button
-                        onClick={() => setTheme("system")}
-                        className={cn(
-                          "p-4 rounded-lg border-2 transition-all",
-                          theme === "system" || !theme
-                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
-                            : "border-surface-200 dark:border-surface-700 hover:border-surface-300"
-                        )}
-                      >
-                        <div className="w-6 h-6 mx-auto mb-2 flex items-center justify-center">
-                          <Sun className="w-3 h-3 text-surface-600 dark:text-surface-400" />
-                          <Moon className="w-3 h-3 text-surface-600 dark:text-surface-400" />
+                      {user.role === "ADMIN" && (
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                          <Shield className="w-4 h-4 text-destructive" />
+                          <span className="text-sm text-destructive">Administrator Account</span>
                         </div>
-                        <p className="text-sm font-medium text-surface-900 dark:text-white">System</p>
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                      )}
+                      <Button type="submit" variant="default" className="w-full">Save Changes</Button>
+                    </form>
+                  </Form>
+                  </CardContent>
+                </Card>
               </div>
-            )}
+              </TabsContent>
+
+              <TabsContent value="notifications" className="mt-0">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Notification Settings</CardTitle>
+                    <CardDescription>
+                      Manage how you receive notifications
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Form {...form}>
+                      <form className="space-y-4">
+                        <FormItem className="flex items-center justify-between gap-4 p-4 rounded-lg bg-muted">
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <FormLabel htmlFor="browser-notifications" className="font-medium">
+                              Browser Notifications
+                            </FormLabel>
+                            <FormDescription className="text-sm">
+                              Get notified when you receive new messages
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <div className="flex-shrink-0">
+                              <Switch
+                                id="browser-notifications"
+                                checked={isSubscribed}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    subscribe();
+                                  } else {
+                                    unsubscribe();
+                                  }
+                                }}
+                                disabled={permission === 'denied' || isPushLoading}
+                              />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+
+                        <FormItem className="flex items-center justify-between gap-4 p-4 rounded-lg bg-muted">
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <FormLabel htmlFor="sound-notifications" className="font-medium">
+                              Sound Notifications
+                            </FormLabel>
+                            <FormDescription className="text-sm">
+                              Play sound when receiving messages
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <div className="flex-shrink-0">
+                              <Switch id="sound-notifications" defaultChecked />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              </div>
+              </TabsContent>
+
+              <TabsContent value="appearance" className="mt-0">
+              <div className="space-y-6">
+                {/* Theme Selection */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Theme</CardTitle>
+                    <CardDescription>
+                      Choose your color scheme
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                  <ToggleGroup
+                    type="single"
+                    value={theme.theme}
+                    onValueChange={(value) => {
+                      if (value) {
+                        theme.setTheme(value as "light" | "dark" | "system");
+                        setNextTheme(value as "light" | "dark" | "system");
+                      }
+                    }}
+                    className="grid grid-cols-3 gap-4 w-full"
+                  >
+                    <ToggleGroupItem
+                      value="light"
+                      className="p-4 rounded-lg border-2 flex flex-col items-center gap-2 text-center data-[state=on]:border-primary data-[state=on]:bg-primary/10"
+                    >
+                      <Sun className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+                      <p className="text-sm font-medium text-foreground truncate w-full">Light</p>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="dark"
+                      className="p-4 rounded-lg border-2 flex flex-col items-center gap-2 text-center data-[state=on]:border-primary data-[state=on]:bg-primary/10"
+                    >
+                      <Moon className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+                      <p className="text-sm font-medium text-foreground truncate w-full">Dark</p>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="system"
+                      className="p-4 rounded-lg border-2 flex flex-col items-center gap-2 text-center data-[state=on]:border-primary data-[state=on]:bg-primary/10"
+                    >
+                      <Monitor className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+                      <p className="text-sm font-medium text-foreground truncate w-full">System</p>
+                    </ToggleGroupItem>
+                    </ToggleGroup>
+                  </CardContent>
+                </Card>
+
+                {/* Style Selection */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Visual Style</CardTitle>
+                    <CardDescription>
+                      Choose your visual design style
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                  <ToggleGroup
+                    type="single"
+                    value={style.style}
+                    onValueChange={(value) => {
+                      if (value) style.setStyle(value as "solid" | "glassmorphic");
+                    }}
+                    className="grid grid-cols-2 gap-4 w-full"
+                  >
+                    <ToggleGroupItem
+                      value="solid"
+                      className="p-4 rounded-lg border-2 flex flex-col items-center gap-2 text-center data-[state=on]:border-primary data-[state=on]:bg-primary/10"
+                    >
+                      <Square className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+                      <p className="text-sm font-medium text-foreground truncate w-full">Solid</p>
+                      <p className="text-xs text-muted-foreground truncate w-full">Classic design</p>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="glassmorphic"
+                      className="p-4 rounded-lg border-2 flex flex-col items-center gap-2 text-center data-[state=on]:border-primary data-[state=on]:bg-primary/10"
+                    >
+                      <Wand2 className="w-6 h-6 text-muted-foreground flex-shrink-0" />
+                      <p className="text-sm font-medium text-foreground truncate w-full">Glassmorphic</p>
+                      <p className="text-xs text-muted-foreground truncate w-full">Modern blur effect</p>
+                    </ToggleGroupItem>
+                    </ToggleGroup>
+                  </CardContent>
+                </Card>
+
+                {/* Preview */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">
+                      Current: <span className="font-medium text-foreground">{theme.resolvedTheme}</span> theme with <span className="font-medium text-foreground">{style.style}</span> style
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+              </TabsContent>
           </ScrollArea>
-        </div>
+        </Tabs>
 
         {/* Footer */}
         <Separator />
         <div className="flex items-center justify-between p-6">
-          <button
+          <Button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            variant="ghost"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Sign Out</span>
-          </button>
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
           <Button onClick={onClose} variant="default">
             Close
           </Button>
@@ -389,7 +505,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveAvatar}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-ring"
             >
               Remove
             </AlertDialogAction>

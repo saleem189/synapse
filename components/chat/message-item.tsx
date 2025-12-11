@@ -10,6 +10,9 @@ import { motion } from "framer-motion";
 import { Reply } from "lucide-react";
 import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { FileAttachment } from "./file-attachment";
 import { MessageReactions } from "./message-reactions";
 import { ReadReceipts } from "./read-receipts";
@@ -82,12 +85,39 @@ export const MessageItem = memo(function MessageItem({
       {!isSent && (
         <div className="w-8 flex-shrink-0">
           {showAvatar && (
-            <Avatar className="w-8 h-8 bg-gradient-to-br from-primary-400 to-blue-500">
-              <AvatarImage src={message.senderAvatar || undefined} alt={message.senderName} />
-              <AvatarFallback className="bg-gradient-to-br from-primary-400 to-blue-500 text-white text-xs font-semibold">
-                {getInitials(message.senderName)}
-              </AvatarFallback>
-            </Avatar>
+            <HoverCard key={`hover-${message.id}`} openDelay={200} closeDelay={100}>
+              <HoverCardTrigger asChild>
+                <button type="button" className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
+                  <Avatar className="w-8 h-8 bg-gradient-to-br from-primary to-accent">
+                    <AvatarImage src={message.senderAvatar || undefined} alt={message.senderName} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xs font-semibold">
+                      {getInitials(message.senderName)}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-80" side="right" align="start">
+                <div className="flex justify-between space-x-4">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={message.senderAvatar || undefined} alt={message.senderName} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                      {getInitials(message.senderName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="space-y-1 flex-1">
+                    <h4 className="text-sm font-semibold">{message.senderName}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      ChatFlow User
+                    </p>
+                    <div className="flex items-center pt-2">
+                      <span className="text-xs text-muted-foreground">
+                        Hover to view profile
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
           )}
         </div>
       )}
@@ -96,7 +126,7 @@ export const MessageItem = memo(function MessageItem({
       <div className={cn("max-w-[70%] flex flex-col", isSent ? "items-end order-1" : "items-start")}>
         {/* Sender name (for group chats) */}
         {showName && (
-          <p className="text-xs text-surface-500 dark:text-surface-400 mb-1.5 ml-1 font-medium">
+          <p className="text-xs text-muted-foreground mb-1.5 ml-1 font-medium">
             {message.senderName}
           </p>
         )}
@@ -116,27 +146,33 @@ export const MessageItem = memo(function MessageItem({
                 ? "p-2"
                 : "px-4 py-2.5",
               isSent
-                ? "bg-primary-600 text-white rounded-br-md shadow-lg shadow-primary-600/25 hover:shadow-xl hover:shadow-primary-600/35"
-                : "bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 rounded-bl-md border border-surface-200 dark:border-surface-700 shadow-md hover:shadow-lg hover:border-surface-300 dark:hover:border-surface-600"
+                ? "bg-primary text-primary-foreground rounded-br-md shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35"
+                : "bg-card text-card-foreground rounded-bl-md border border-border shadow-md hover:shadow-lg hover:border-border/80"
             )}
           >
             {/* Reply Button - Show on hover */}
             {!message.isDeleted && (
-              <button
-                onClick={() => onReply(message)}
-                className={cn(
-                  "absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10",
-                  "w-8 h-8 rounded-lg flex items-center justify-center",
-                  "bg-white/90 dark:bg-surface-800/90 backdrop-blur-sm",
-                  "shadow-md border border-surface-200 dark:border-surface-700",
-                  "hover:bg-white dark:hover:bg-surface-800",
-                  "text-surface-600 hover:text-primary-600 dark:text-surface-400 dark:hover:text-primary-400",
-                  "hover:scale-110 active:scale-95"
-                )}
-                title="Reply"
-              >
-                <Reply className="w-4 h-4" />
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onReply(message)}
+                      className={cn(
+                        "absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10",
+                        "w-8 h-8 rounded-lg",
+                        "bg-card/90 backdrop-blur-sm",
+                        "shadow-md border border-border",
+                        "hover:scale-110 active:scale-95"
+                      )}
+                    >
+                      <Reply className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Reply</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
 
             {/* Message Actions (Edit/Delete) - Show on hover */}
@@ -160,17 +196,17 @@ export const MessageItem = memo(function MessageItem({
               <div className={cn(
                 "mb-2.5 pl-3 pr-2 py-1.5 border-l-4 rounded-r-md cursor-pointer hover:opacity-90 transition-opacity",
                 isSent
-                  ? "border-primary-200 bg-primary-500/20 backdrop-blur-sm"
-                  : "border-primary-400 dark:border-primary-500 bg-surface-100 dark:bg-surface-800/70"
+                  ? "border-primary/30 bg-primary/10 backdrop-blur-sm"
+                  : "border-primary/20 bg-muted/70"
               )}
               onClick={() => {
                 // Scroll to original message
                 const originalMessage = document.querySelector(`[data-message-id="${message.replyTo?.id}"]`);
                 if (originalMessage) {
                   originalMessage.scrollIntoView({ behavior: "smooth", block: "center" });
-                  originalMessage.classList.add("ring-2", "ring-primary-500", "ring-offset-2");
+                  originalMessage.classList.add("ring-2", "ring-ring", "ring-offset-2");
                   setTimeout(() => {
-                    originalMessage.classList.remove("ring-2", "ring-primary-500", "ring-offset-2");
+                    originalMessage.classList.remove("ring-2", "ring-ring", "ring-offset-2");
                   }, 2000);
                 }
               }}
@@ -178,18 +214,18 @@ export const MessageItem = memo(function MessageItem({
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <Reply className={cn(
                     "w-3 h-3",
-                    isSent ? "text-primary-100" : "text-primary-600 dark:text-primary-400"
+                    isSent ? "text-primary-foreground/80" : "text-primary"
                   )} />
                   <p className={cn(
                     "text-xs font-semibold",
-                    isSent ? "text-primary-100" : "text-primary-700 dark:text-primary-300"
+                    isSent ? "text-primary-foreground/90" : "text-primary"
                   )}>
                     {message.replyTo.senderName}
                   </p>
                 </div>
                 <p className={cn(
                   "text-xs line-clamp-2 leading-tight",
-                  isSent ? "text-primary-50/90" : "text-surface-700 dark:text-surface-300"
+                  isSent ? "text-primary-foreground/80" : "text-foreground"
                 )}>
                   {message.replyTo.content || "Media"}
                 </p>
@@ -225,12 +261,12 @@ export const MessageItem = memo(function MessageItem({
                 )}>
                   {renderFormattedText(
                     parseFormattedText(sanitizeMessageContent(message.content)),
-                    isSent ? "text-white" : "text-surface-900 dark:text-white"
+                    isSent ? "text-white" : "text-foreground"
                   )}
                   {message.isEdited && (
                     <span className={cn(
                       "text-[10px] ml-1.5 italic opacity-75",
-                      isSent ? "text-primary-100" : "text-surface-500 dark:text-surface-400"
+                      isSent ? "text-primary-foreground/70" : "text-muted-foreground"
                     )}>
                       (edited)
                     </span>
@@ -251,7 +287,7 @@ export const MessageItem = memo(function MessageItem({
             {message.isDeleted && (
               <p className={cn(
                 "text-sm italic opacity-70",
-                isSent ? "text-primary-100" : "text-surface-500 dark:text-surface-400"
+                isSent ? "text-primary-foreground/80" : "text-muted-foreground"
               )}>
                 This message was deleted
               </p>
@@ -267,8 +303,8 @@ export const MessageItem = memo(function MessageItem({
                   className={cn(
                     "text-[10px] font-medium",
                     isSent
-                      ? "text-primary-100/90"
-                      : "text-surface-500 dark:text-surface-400"
+                      ? "text-primary-foreground/90"
+                      : "text-muted-foreground"
                   )}
                 >
                   <MessageTime timestamp={message.createdAt} />

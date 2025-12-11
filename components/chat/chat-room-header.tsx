@@ -9,7 +9,12 @@ import { Hash, Phone, Video, Info, Search, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { RoomMenu } from "./room-menu";
+import { useVideoCallContext } from "@/features/video-call";
 
 interface ChatRoomHeaderProps {
   roomName: string;
@@ -47,23 +52,43 @@ export function ChatRoomHeader({
   onRoomSettings,
 }: ChatRoomHeaderProps) {
   const onlineParticipants = participants.filter((p) => ('status' in p && p.status === "online") || false);
+  const { initiateCall, activeCall } = useVideoCallContext();
+  
+  const handleVideoCall = () => {
+    if (!roomData?.id) return;
+    const targetUserId = !isGroup && participants.length === 2 
+      ? participants.find(p => p.id !== participants[0]?.id)?.id 
+      : undefined;
+    initiateCall(roomData.id, 'video', targetUserId);
+  };
+  
+  const handleAudioCall = () => {
+    if (!roomData?.id) return;
+    const targetUserId = !isGroup && participants.length === 2 
+      ? participants.find(p => p.id !== participants[0]?.id)?.id 
+      : undefined;
+    initiateCall(roomData.id, 'audio', targetUserId);
+  };
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-surface-800">
+    <header className="flex items-center justify-between px-4 py-3 bg-background border-b border-border">
       <div className="flex items-center gap-3">
+        {/* Sidebar Trigger for Mobile */}
+        <SidebarTrigger className="lg:hidden" />
+        
         {/* Room Avatar */}
         <Avatar className={cn(
           "w-10 h-10",
           isGroup
             ? "bg-gradient-to-br from-accent-400 to-pink-500"
-            : "bg-gradient-to-br from-primary-400 to-blue-500"
+            : "bg-gradient-to-br from-primary to-accent"
         )}>
           <AvatarImage src={roomData?.avatar || undefined} alt={roomName} />
           <AvatarFallback className={cn(
             "text-white font-semibold",
             isGroup
               ? "bg-gradient-to-br from-accent-400 to-pink-500"
-              : "bg-gradient-to-br from-primary-400 to-blue-500"
+              : "bg-gradient-to-br from-primary to-accent"
           )}>
             {isGroup ? <Hash className="w-5 h-5" /> : getInitials(roomName)}
           </AvatarFallback>
@@ -71,10 +96,10 @@ export function ChatRoomHeader({
 
         {/* Room Info */}
         <div>
-          <h2 className="font-semibold text-surface-900 dark:text-white">
+          <h2 className="font-semibold text-foreground">
             {roomName}
           </h2>
-          <p className="text-xs text-surface-500 dark:text-surface-400">
+          <p className="text-xs text-muted-foreground">
             {isGroup
               ? `${participants.length} members`
               : onlineParticipants.length > 0
@@ -85,72 +110,101 @@ export function ChatRoomHeader({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1">
-        {/* Pinned Messages Toggle */}
-        {onTogglePinnedMessages && (
-          <button
-            onClick={onTogglePinnedMessages}
-            className={cn(
-              "w-9 h-9 rounded-lg flex items-center justify-center transition-colors relative",
-              showPinnedMessages
-                ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-                : "hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-surface-700 dark:hover:text-surface-300"
-            )}
-            title="Pinned messages"
-          >
-            <Pin className="w-5 h-5" />
-            {pinnedMessagesCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary-500 text-white text-xs flex items-center justify-center font-medium">
-                {pinnedMessagesCount > 9 ? "9+" : pinnedMessagesCount}
-              </span>
-            )}
-          </button>
-        )}
-        <button
-          onClick={onToggleSearch}
-          className={cn(
-            "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
-            showSearch
-              ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-              : "hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-surface-700 dark:hover:text-surface-300"
+      <TooltipProvider>
+        <div className="flex items-center gap-1">
+          {/* Pinned Messages Toggle */}
+          {onTogglePinnedMessages && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={onTogglePinnedMessages}
+                  variant={showPinnedMessages ? "default" : "ghost"}
+                  size="icon"
+                  className={cn(
+                    "w-9 h-9 relative",
+                    showPinnedMessages ? "bg-primary/10 text-primary" : ""
+                  )}
+                >
+                  <Pin className="w-5 h-5" />
+                  {pinnedMessagesCount > 0 && (
+                    <Badge variant="default" className="absolute -top-1 -right-1 w-5 h-5 rounded-full p-0 flex items-center justify-center text-xs font-medium">
+                      {pinnedMessagesCount > 9 ? "9+" : pinnedMessagesCount}
+                    </Badge>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Pinned messages</TooltipContent>
+            </Tooltip>
           )}
-          title="Search messages"
-        >
-          <Search className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => toast.info("Voice call feature - Coming soon!")}
-          className="w-9 h-9 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors"
-          title="Voice call"
-        >
-          <Phone className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => toast.info("Video call feature - Coming soon!")}
-          className="w-9 h-9 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors"
-          title="Video call"
-        >
-          <Video className="w-5 h-5" />
-        </button>
-        <button
-          onClick={onToggleInfo}
-          className={cn(
-            "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
-            showInfo
-              ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-              : "hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-surface-700 dark:hover:text-surface-300"
-          )}
-        >
-          <Info className="w-5 h-5" />
-        </button>
-        <RoomMenu
-          roomId={roomData?.id || ""}
-          isGroup={isGroup}
-          isRoomAdmin={isRoomAdmin}
-          onViewMembers={onToggleInfo}
-          onRoomSettings={onRoomSettings}
-        />
-      </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onToggleSearch}
+                variant={showSearch ? "default" : "ghost"}
+                size="icon"
+                className={cn(
+                  "w-9 h-9",
+                  showSearch ? "bg-primary/10 text-primary" : ""
+                )}
+              >
+                <Search className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Search messages</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleAudioCall}
+                disabled={!!activeCall}
+                variant="ghost"
+                size="icon"
+                className="w-9 h-9"
+              >
+                <Phone className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Voice call</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleVideoCall}
+                disabled={!!activeCall}
+                variant="ghost"
+                size="icon"
+                className="w-9 h-9"
+              >
+                <Video className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Video call</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onToggleInfo}
+                variant={showInfo ? "default" : "ghost"}
+                size="icon"
+                className={cn(
+                  "w-9 h-9",
+                  showInfo ? "bg-primary/10 text-primary" : ""
+                )}
+              >
+                <Info className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Room info</TooltipContent>
+          </Tooltip>
+          <RoomMenu
+            roomId={roomData?.id || ""}
+            isGroup={isGroup}
+            isRoomAdmin={isRoomAdmin}
+            onViewMembers={onToggleInfo}
+            onRoomSettings={onRoomSettings}
+          />
+        </div>
+      </TooltipProvider>
     </header>
   );
 }

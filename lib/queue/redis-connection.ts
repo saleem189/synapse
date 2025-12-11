@@ -83,14 +83,6 @@ redisConnection.on('reconnecting', () => {
   logger.log('🔄 Redis reconnecting...');
 });
 
-// Graceful shutdown (only in Node.js runtime, not Edge Runtime)
-if (typeof process !== 'undefined' && process.on) {
-  process.on('SIGTERM', () => {
-    redisConnection.quit();
-  });
-
-  process.on('SIGINT', () => {
-    redisConnection.quit();
-  });
-}
+// Note: Graceful shutdown is handled by lib/shutdown-handlers.ts
+// No need to register SIGTERM/SIGINT here to avoid duplicate listeners
 

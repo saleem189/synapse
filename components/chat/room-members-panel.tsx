@@ -10,8 +10,12 @@ import { Users, Crown, Shield, UserMinus, UserPlus, MoreVertical } from "lucide-
 import { toast } from "sonner";
 import { cn, getInitials } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,7 +74,11 @@ export function RoomMembersPanel({
       setRemoveMemberDialogOpen(false);
       setMemberToRemove(null);
     } catch (error) {
-      console.error("Error removing member:", error);
+      logger.error("Error removing member", error instanceof Error ? error : new Error(String(error)), {
+        component: 'RoomMembersPanel',
+        roomId,
+        memberId: memberToRemove?.id,
+      });
       toast.error("An error occurred. Please try again.");
     }
   };
@@ -92,7 +100,12 @@ export function RoomMembersPanel({
       setAdminDialogOpen(false);
       setAdminAction(null);
     } catch (error) {
-      console.error("Error updating admin:", error);
+      logger.error("Error updating admin", error instanceof Error ? error : new Error(String(error)), {
+        component: 'RoomMembersPanel',
+        roomId,
+        userId: adminAction?.userId,
+        isAdmin: !adminAction?.isCurrentlyAdmin,
+      });
       toast.error("An error occurred. Please try again.");
     }
   };
@@ -105,7 +118,7 @@ export function RoomMembersPanel({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-surface-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Users className="w-5 h-5" />
           Members ({participants.length})
         </h3>
@@ -125,48 +138,92 @@ export function RoomMembersPanel({
       {/* Admins Section */}
       {admins.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-surface-500 mb-2 uppercase tracking-wide">
+          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
             Admins ({admins.length})
           </p>
           <div className="space-y-2">
             {admins.map((participant) => (
               <div
                 key={participant.id}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors group"
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="w-10 h-10 bg-gradient-to-br from-primary-400 to-blue-500">
-                      <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary-400 to-blue-500 text-white text-sm font-semibold">
-                        {getInitials(participant.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {participant.isOwner && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center border-2 border-white dark:border-surface-900">
-                        <Crown className="w-3 h-3 text-white" />
+                <HoverCard openDelay={200} closeDelay={100}>
+                  <HoverCardTrigger asChild>
+                    <button type="button" className="flex items-center gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg w-full text-left">
+                      <div className="relative">
+                        <Avatar className="w-10 h-10 bg-gradient-to-br from-primary to-accent">
+                          <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-sm font-semibold">
+                            {getInitials(participant.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {participant.isOwner && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center border-2 border-background">
+                            <Crown className="w-3 h-3 text-white" />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-surface-900 dark:text-white flex items-center gap-1">
-                      {participant.name}
-                      {participant.isOwner && (
-                        <span className="text-xs text-surface-500">(Owner)</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-surface-500">
-                      {participant.status === "online" ? "Online" : "Offline"}
-                    </p>
-                  </div>
-                </div>
+                      <div>
+                        <p className="font-medium text-sm text-foreground flex items-center gap-1">
+                          {participant.name}
+                          {participant.isOwner && (
+                            <span className="text-xs text-muted-foreground">(Owner)</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {participant.status === "online" ? "Online" : "Offline"}
+                        </p>
+                      </div>
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80" side="right" align="start">
+                    <div className="flex justify-between space-x-4">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                          {getInitials(participant.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1 flex-1">
+                        <h4 className="text-sm font-semibold flex items-center gap-2">
+                          {participant.name}
+                          {participant.isOwner && (
+                            <Crown className="w-4 h-4 text-yellow-500" />
+                          )}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {participant.email || "ChatFlow User"}
+                        </p>
+                        <div className="flex items-center gap-2 pt-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            participant.status === "online"
+                              ? "bg-green-100/20 text-green-600"
+                              : "bg-muted text-muted-foreground"
+                          }`}>
+                            {participant.status === "online" ? "Online" : "Offline"}
+                          </span>
+                          <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                            Admin
+                          </span>
+                          {participant.isOwner && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-600">
+                              Owner
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
                 {isRoomAdmin && participant.id !== currentUserId && !participant.isOwner && (
-                  <button
+                  <Button
                     onClick={() => handleToggleAdminClick(participant.id, true)}
-                    className="opacity-0 group-hover:opacity-100 px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10"
                   >
                     Remove Admin
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}
@@ -177,50 +234,98 @@ export function RoomMembersPanel({
       {/* Members Section */}
       {members.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-surface-500 mb-2 uppercase tracking-wide">
+          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
             Members ({members.length})
           </p>
           <div className="space-y-2">
             {members.map((participant) => (
               <div
                 key={participant.id}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors group"
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors group"
               >
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-10 h-10 bg-gradient-to-br from-primary-400 to-blue-500">
-                    <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary-400 to-blue-500 text-white text-sm font-semibold">
-                      {getInitials(participant.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium text-sm text-surface-900 dark:text-white">
-                      {participant.name}
-                    </p>
-                    <p className="text-xs text-surface-500">
-                      {participant.status === "online" ? "Online" : "Offline"}
-                    </p>
-                  </div>
-                </div>
-                {isRoomAdmin && (
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                    {isGroup && (
-                      <button
-                        onClick={() => handleToggleAdminClick(participant.id, false)}
-                        className="px-3 py-1.5 text-xs text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                        title="Make admin"
-                      >
-                        <Shield className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleRemoveMemberClick(participant.id, participant.name)}
-                      className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      title="Remove member"
-                    >
-                      <UserMinus className="w-4 h-4" />
+                <HoverCard key={`hover-member-${participant.id}`} openDelay={200} closeDelay={100}>
+                  <HoverCardTrigger asChild>
+                    <button type="button" className="flex items-center gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg w-full text-left">
+                      <Avatar className="w-10 h-10 bg-gradient-to-br from-primary to-accent">
+                        <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-sm font-semibold">
+                          {getInitials(participant.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm text-foreground">
+                          {participant.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {participant.status === "online" ? "Online" : "Offline"}
+                        </p>
+                      </div>
                     </button>
-                  </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80" side="right" align="start">
+                    <div className="flex justify-between space-x-4">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                          {getInitials(participant.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1 flex-1">
+                        <h4 className="text-sm font-semibold">{participant.name}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {participant.email || "ChatFlow User"}
+                        </p>
+                        <div className="flex items-center pt-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            participant.status === "online"
+                              ? "bg-green-100/20 text-green-600"
+                              : "bg-muted text-muted-foreground"
+                          }`}>
+                            {participant.status === "online" ? "Online" : "Offline"}
+                          </span>
+                          {participant.role === "admin" && (
+                            <span className="ml-2 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+                {isRoomAdmin && (
+                  <TooltipProvider>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      {isGroup && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={() => handleToggleAdminClick(participant.id, false)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary hover:bg-primary/10"
+                            >
+                              <Shield className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Make admin</TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => handleRemoveMemberClick(participant.id, participant.name)}
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <UserMinus className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remove member</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
                 )}
               </div>
             ))}
@@ -231,8 +336,8 @@ export function RoomMembersPanel({
       {/* Add Member Modal would go here */}
       {showAddMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white dark:bg-surface-900 rounded-2xl p-6 max-w-md w-full">
-            <p className="text-center text-surface-500">
+          <div className="bg-background rounded-2xl p-6 max-w-md w-full">
+            <p className="text-center text-muted-foreground">
               Add member feature - Coming soon!
             </p>
             <Button

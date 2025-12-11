@@ -82,12 +82,12 @@ export function UserActivityChart() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-2xl font-bold text-surface-900 dark:text-white">
+          <p className="text-2xl font-bold text-foreground">
             {currentOnline}
           </p>
-          <p className="text-sm text-surface-500">Currently Online</p>
+          <p className="text-sm text-muted-foreground">Currently Online</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-surface-400">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           Live
         </div>
@@ -109,7 +109,7 @@ export function UserActivityChart() {
                     ? "bg-green-500"
                     : point.online > 0
                       ? "bg-green-400/70"
-                      : "bg-surface-200 dark:bg-surface-700"
+                      : "bg-muted"
                   }`}
                 style={{ height: `${Math.max(height, 2)}%` }}
                 title={`${point.time}: ${point.online} online`}
@@ -119,7 +119,7 @@ export function UserActivityChart() {
         })}
       </div>
 
-      <div className="flex justify-between text-xs text-surface-400">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>{dataPoints[0]?.time}</span>
         <span>{dataPoints[dataPoints.length - 1]?.time}</span>
       </div>

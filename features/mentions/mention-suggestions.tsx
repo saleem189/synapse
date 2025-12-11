@@ -73,14 +73,14 @@ export function MentionSuggestions({
             ref={containerRef}
             className={cn(
                 "absolute z-50 w-64 max-h-48 overflow-y-auto",
-                "bg-white dark:bg-surface-900 rounded-xl shadow-xl",
-                "border border-surface-200 dark:border-surface-700",
+                "bg-popover rounded-xl shadow-xl",
+                "border border-border",
                 "animate-scale-in"
             )}
             style={positionStyles}
         >
             <div className="p-1.5">
-                <p className="text-xs text-surface-500 px-2 py-1 font-medium">
+                <p className="text-xs text-muted-foreground px-2 py-1 font-medium">
                     Mention someone
                 </p>
                 {filteredUsers.map((user, index) => (
@@ -90,27 +90,27 @@ export function MentionSuggestions({
                         className={cn(
                             "w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors",
                             index === selectedIndex
-                                ? "bg-primary-100 dark:bg-primary-900/30"
-                                : "hover:bg-surface-100 dark:hover:bg-surface-800"
+                                ? "bg-accent text-accent-foreground"
+                                : "hover:bg-accent hover:text-accent-foreground"
                         )}
                     >
-                        <div className="relative">
+                        <div className="relative flex-shrink-0">
                             <Avatar className="w-8 h-8">
                                 <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                                <AvatarFallback className="bg-gradient-to-br from-primary-400 to-accent-500 text-white text-xs">
-                                    {getInitials(user.name)}
+                                <AvatarFallback className="!bg-gradient-to-br !from-primary !to-accent !text-primary-foreground text-xs font-semibold">
+                                    {getInitials(user.name) || "?"}
                                 </AvatarFallback>
                             </Avatar>
                             {user.isOnline && (
-                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-surface-900" />
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background" />
                             )}
                         </div>
-                        <div className="flex-1 text-left">
-                            <p className="text-sm font-medium text-surface-900 dark:text-white">
+                        <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
                                 {user.name}
                             </p>
                             {user.email && (
-                                <p className="text-xs text-surface-500 truncate">
+                                <p className="text-xs text-muted-foreground truncate">
                                     {user.email}
                                 </p>
                             )}

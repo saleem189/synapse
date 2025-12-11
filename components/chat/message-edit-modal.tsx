@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
 import {
   Dialog,
   DialogContent,
@@ -64,7 +65,10 @@ export function MessageEditModal({
       onSave(messageId, content.trim());
       onClose();
     } catch (error) {
-      console.error("Error editing message:", error);
+      logger.error("Error editing message", error instanceof Error ? error : new Error(String(error)), {
+        component: 'MessageEditModal',
+        messageId,
+      });
       // Error toast is handled by API client
     } finally {
       setIsSaving(false);
@@ -100,25 +104,25 @@ export function MessageEditModal({
             className="min-h-[100px]"
             rows={4}
           />
-          <p className="text-xs text-surface-500">
+          <p className="text-xs text-muted-foreground">
             Press Enter to save, Esc to cancel
           </p>
         </div>
 
         <DialogFooter>
-          <button
+          <Button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
+            variant="outline"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSave}
             disabled={isSaving || !content.trim() || content.trim() === currentContent.trim()}
-            className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            variant="default"
           >
             {isSaving ? "Saving..." : "Save"}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

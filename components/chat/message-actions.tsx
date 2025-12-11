@@ -9,6 +9,8 @@ import { MoreVertical, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,7 +70,11 @@ export function MessageActions({
       onUpdated?.();
       setDeleteDialogOpen(false);
     } catch (error) {
-      console.error("Error deleting message:", error);
+      logger.error("Error deleting message", error instanceof Error ? error : new Error(String(error)), {
+        component: 'MessageActions',
+        messageId,
+        deleteForEveryone,
+      });
       // Error toast is handled by API client
     } finally {
       setIsDeleting(false);
@@ -78,20 +84,20 @@ export function MessageActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           className={cn(
-            "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200",
+            "w-8 h-8 rounded-lg transition-all duration-200",
             "opacity-0 group-hover:opacity-100",
             "hover:scale-110 active:scale-95",
-            "bg-white/90 dark:bg-surface-800/90 backdrop-blur-sm",
-            "shadow-md border border-surface-200 dark:border-surface-700",
-            "hover:bg-white dark:hover:bg-surface-800",
-            "text-surface-600 hover:text-surface-900 dark:text-surface-400 dark:hover:text-surface-100"
+            "bg-background/90 backdrop-blur-sm",
+            "shadow-md border border-border"
           )}
           title="More options"
         >
           <MoreVertical className="w-4 h-4" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         {onEdit && (
@@ -136,7 +142,7 @@ export function MessageActions({
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>

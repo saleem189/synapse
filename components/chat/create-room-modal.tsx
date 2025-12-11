@@ -11,6 +11,7 @@ import { X, Search, Check, Loader2, MessageCircle, Users } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { cn, getInitials } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type { RoomResponse } from "@/lib/types";
 import {
   Dialog,
@@ -81,7 +82,9 @@ export function CreateRoomModal({
       });
       setUsers(data.users.filter((u: User) => u.id !== currentUserId));
     } catch (error) {
-      console.error("Failed to fetch users:", error);
+      logger.error("Failed to fetch users", error instanceof Error ? error : new Error(String(error)), {
+        component: 'CreateRoomModal',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -129,11 +132,19 @@ export function CreateRoomModal({
         onClose();
         router.push(`/chat/${room.id}`);
       } else {
-        console.error("Invalid room data:", data);
+        logger.error("Invalid room data", new Error("Room data missing required fields"), {
+          component: 'CreateRoomModal',
+          action: 'startDirectChat',
+          data,
+        });
         toast.error("Failed to create chat room");
       }
     } catch (error) {
-      console.error("Failed to start chat:", error);
+      logger.error("Failed to start chat", error instanceof Error ? error : new Error(String(error)), {
+        component: 'CreateRoomModal',
+        action: 'startDirectChat',
+        userId: user.id,
+      });
       // Error toast is handled by API client
     } finally {
       setIsCreating(false);
@@ -167,11 +178,19 @@ export function CreateRoomModal({
         onClose();
         router.push(`/chat/${room.id}`);
       } else {
-        console.error("Invalid room data:", data);
+        logger.error("Invalid room data", new Error("Room data missing required fields"), {
+          component: 'CreateRoomModal',
+          action: 'createGroupChat',
+          data,
+        });
         toast.error("Failed to create group");
       }
     } catch (error) {
-      console.error("Failed to create group:", error);
+      logger.error("Failed to create group", error instanceof Error ? error : new Error(String(error)), {
+        component: 'CreateRoomModal',
+        action: 'createGroupChat',
+        participantCount: selectedUsers.length,
+      });
       // Error toast is handled by API client
     } finally {
       setIsCreating(false);
@@ -181,7 +200,7 @@ export function CreateRoomModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-4 pt-4 pb-2 border-b border-surface-200 dark:border-surface-800">
+        <DialogHeader className="px-4 pt-4 pb-2 border-b border-border">
           <DialogTitle>
             {mode === "select" ? "New Chat" : "Create Group"}
           </DialogTitle>
@@ -197,7 +216,7 @@ export function CreateRoomModal({
             {/* Search */}
             <div className="p-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Search users..."
@@ -212,13 +231,14 @@ export function CreateRoomModal({
             {/* Group option */}
             {selectedUsers.length >= 2 && (
               <div className="px-4 pt-4">
-                <button
+                <Button
                   onClick={() => setMode("group-details")}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/30"
+                  variant="outline"
+                  className="w-full justify-start gap-3 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
                 >
                   <Users className="w-5 h-5" />
                   <span className="font-medium">Create Group with {selectedUsers.length} people</span>
-                </button>
+                </Button>
               </div>
             )}
 
@@ -228,12 +248,17 @@ export function CreateRoomModal({
                 {selectedUsers.map((user) => (
                   <span
                     key={user.id}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-surface-100 dark:bg-surface-800 text-xs"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-secondary-foreground text-xs"
                   >
                     {user.name}
-                    <button onClick={() => toggleUserForGroup(user)}>
+                    <Button
+                      onClick={() => toggleUserForGroup(user)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4"
+                    >
                       <X className="w-3 h-3" />
-                    </button>
+                    </Button>
                   </span>
                 ))}
               </div>
@@ -241,16 +266,16 @@ export function CreateRoomModal({
 
             {/* User list */}
             <ScrollArea className="p-4 max-h-80">
-              <p className="text-xs text-surface-500 mb-3">
+              <p className="text-xs text-muted-foreground mb-3">
                 Click to start chat • Right-click or long press to select for group
               </p>
               
               {isLoading ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
+                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
                 </div>
               ) : filteredUsers.length === 0 ? (
-                <p className="text-center py-8 text-surface-500">No users found</p>
+                <p className="text-center py-8 text-muted-foreground">No users found</p>
               ) : (
                 <div className="space-y-1">
                   {filteredUsers.map((user) => {
@@ -261,8 +286,8 @@ export function CreateRoomModal({
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
                           isSelected
-                            ? "bg-primary-50 dark:bg-primary-900/20"
-                            : "hover:bg-surface-100 dark:hover:bg-surface-800"
+                            ? "bg-primary/10"
+                            : "hover:bg-accent hover:text-accent-foreground"
                         )}
                         onClick={() => {
                           if (isCreating) return;
@@ -304,21 +329,21 @@ export function CreateRoomModal({
                           target.addEventListener('touchmove', handleTouchMove, { once: true });
                         }}
                       >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-blue-500 flex items-center justify-center text-white font-semibold">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-semibold">
                           {getInitials(user.name)}
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-surface-900 dark:text-white">
+                          <p className="font-medium text-foreground">
                             {user.name}
                           </p>
-                          <p className="text-sm text-surface-500">{user.email}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                         {isSelected ? (
-                          <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
+                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="w-4 h-4 text-primary-foreground" />
                           </div>
                         ) : (
-                          <MessageCircle className="w-5 h-5 text-surface-400" />
+                          <MessageCircle className="w-5 h-5 text-muted-foreground" />
                         )}
                       </div>
                     );
@@ -328,8 +353,8 @@ export function CreateRoomModal({
             </ScrollArea>
 
             {isCreating && (
-              <div className="absolute inset-0 bg-white/80 dark:bg-surface-900/80 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+              <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
               </div>
             )}
           </>
@@ -339,13 +364,13 @@ export function CreateRoomModal({
           <div className="p-4">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Group Name</label>
-                <input
+                <Label htmlFor="group-name">Group Name</Label>
+                <Input
+                  id="group-name"
                   type="text"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
                   placeholder="Enter group name..."
-                  className="w-full px-4 py-2 rounded-lg bg-background border border-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   autoFocus
                 />
               </div>
@@ -358,7 +383,7 @@ export function CreateRoomModal({
                   {selectedUsers.map((user) => (
                     <span
                       key={user.id}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-100 dark:bg-surface-800 text-sm"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-sm"
                     >
                       {user.name}
                     </span>

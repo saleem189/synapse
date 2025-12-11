@@ -120,6 +120,11 @@ export default async function ChatRoomPage({ params }: ChatRoomPageProps) {
     ? room.name
     : otherParticipants[0]?.user.name || room.name;
 
+  // Safety check for owner
+  if (!room.owner || !room.owner.id) {
+    notFound();
+  }
+
   return (
     <ChatRoom
       roomId={room.id}
@@ -135,7 +140,7 @@ export default async function ChatRoomPage({ params }: ChatRoomPageProps) {
         status: p.user.status,
         lastSeen: toISOString(p.user.lastSeen),
         role: p.role, // "admin" or "member" in RoomParticipant
-        isOwner: room.owner.id === p.user.id,
+        isOwner: room.owner?.id === p.user.id,
       }))}
       roomOwnerId={room.owner.id}
       roomData={{

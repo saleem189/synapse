@@ -9,6 +9,7 @@ import Image from "next/image";
 import { apiClient } from "@/lib/api-client";
 import { ExternalLink, Image as ImageIcon, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface LinkPreviewProps {
@@ -48,7 +49,10 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
       } catch (err) {
         if (isMounted) {
           setError("Failed to load preview");
-          console.error("Error fetching link preview:", err);
+          logger.error("Error fetching link preview", err instanceof Error ? err : new Error(String(err)), {
+            component: 'LinkPreview',
+            url,
+          });
         }
       } finally {
         if (isMounted) {
@@ -75,13 +79,13 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
         className={cn(
           "mt-2 overflow-hidden",
           isSent
-            ? "bg-primary-500/10 border-primary-400/30"
-            : "bg-surface-50 dark:bg-surface-800/50"
+            ? "bg-primary/10 border-primary/20"
+            : "bg-muted/50"
         )}
       >
         <CardContent className="p-3 animate-pulse">
-          <div className="h-4 bg-surface-200 dark:bg-surface-700 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-surface-200 dark:bg-surface-700 rounded w-1/2"></div>
+          <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+          <div className="h-3 bg-muted rounded w-1/2"></div>
         </CardContent>
       </Card>
     );
@@ -97,7 +101,7 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
         onClick={handleClick}
         className={cn(
           "mt-2 inline-flex items-center gap-1.5 text-sm underline",
-          isSent ? "text-primary-100" : "text-primary-600 dark:text-primary-400"
+          isSent ? "text-primary-foreground/90" : "text-primary"
         )}
       >
         <ExternalLink className="w-3.5 h-3.5" />
@@ -113,12 +117,12 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
         "mt-2 overflow-hidden cursor-pointer transition-all duration-200",
         "hover:shadow-md",
         isSent
-          ? "bg-primary-500/10 border-primary-400/30 hover:bg-primary-500/15"
-          : "bg-surface-50 dark:bg-surface-800/50 hover:bg-surface-100 dark:hover:bg-surface-800"
+          ? "bg-primary/10 border-primary/20 hover:bg-primary/15"
+          : "bg-muted/50 hover:bg-accent"
       )}
     >
       {preview.image && (
-        <div className="relative w-full h-48 overflow-hidden bg-surface-100 dark:bg-surface-900">
+        <div className="relative w-full h-48 overflow-hidden bg-muted">
           <Image
             src={preview.image}
             alt={preview.title || "Preview"}
@@ -148,20 +152,20 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
           <div className="flex-1 min-w-0">
             <p className={cn(
               "text-xs font-medium mb-0.5 truncate",
-              isSent ? "text-primary-200" : "text-surface-500 dark:text-surface-400"
+              isSent ? "text-primary-foreground/70" : "text-muted-foreground"
             )}>
               {preview.siteName}
             </p>
             <h4 className={cn(
               "text-sm font-semibold mb-1 line-clamp-2",
-              isSent ? "text-white" : "text-surface-900 dark:text-white"
+              isSent ? "text-primary-foreground" : "text-foreground"
             )}>
               {preview.title}
             </h4>
             {preview.description && (
               <p className={cn(
                 "text-xs line-clamp-2",
-                isSent ? "text-primary-100/80" : "text-surface-600 dark:text-surface-400"
+                isSent ? "text-primary-foreground/70" : "text-muted-foreground"
               )}>
                 {preview.description}
               </p>
@@ -169,7 +173,7 @@ export function LinkPreview({ url, isSent }: LinkPreviewProps) {
           </div>
           <ExternalLink className={cn(
             "w-4 h-4 flex-shrink-0 mt-0.5",
-            isSent ? "text-primary-200" : "text-surface-400"
+            isSent ? "text-primary-foreground/70" : "text-muted-foreground"
           )} />
         </div>
       </CardContent>

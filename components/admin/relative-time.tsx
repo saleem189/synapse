@@ -17,7 +17,7 @@ export function RelativeTime({ timestamp }: RelativeTimeProps) {
     <TimeDisplay 
       timestamp={timestamp} 
       format="relative"
-      className="text-surface-400"
+      className="text-muted-foreground"
       placeholder="--"
     />
   );

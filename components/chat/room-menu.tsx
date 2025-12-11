@@ -10,6 +10,8 @@ import { MoreVertical, Users, Bell, BellOff, Trash2, Archive, Settings } from "l
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,7 +116,11 @@ export function RoomMenu({ roomId, isGroup, isRoomAdmin, onLeaveRoom, onDeleteRo
       }
       setLeaveDialogOpen(false);
     } catch (error) {
-      console.error("Error leaving/deleting room:", error);
+      logger.error("Error leaving/deleting room", error instanceof Error ? error : new Error(String(error)), {
+        component: 'RoomMenu',
+        roomId,
+        isGroup,
+      });
       toast.error("An error occurred. Please try again.");
     }
   };
@@ -168,15 +174,14 @@ export function RoomMenu({ roomId, isGroup, isRoomAdmin, onLeaveRoom, onDeleteRo
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          className={cn(
-            "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
-            "hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-surface-700 dark:hover:text-surface-300"
-          )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-9 h-9 rounded-lg"
           title="More options"
         >
           <MoreVertical className="w-5 h-5" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         {menuItems.map((item, index) => {

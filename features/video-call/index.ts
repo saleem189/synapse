@@ -23,11 +23,16 @@ export {
     getActiveScreenSharer,
 } from './types';
 
-// Components would be exported here when created:
-// export { VideoCallProvider } from './components/video-call-provider';
-// export { VideoCallControls } from './components/video-call-controls';
-// export { ParticipantGrid } from './components/participant-grid';
+// Components
+export { VideoCallProvider, useVideoCallContext } from './components/video-call-provider';
+export { VideoCallModal } from './components/video-call-modal';
+export { IncomingCallDialog } from './components/incoming-call-dialog';
+export { ResizableVideoCallWindow } from './components/resizable-video-call-window';
+export { ParticipantVideo } from './components/participant-video';
+export { ParticipantGrid } from './components/participant-grid';
+export { CallControls } from './components/call-controls';
 
-// Hooks would be exported here when created:
-// export { useVideoCall } from './hooks/use-video-call';
-// export { useVideoCallParticipants } from './hooks/use-video-call-participants';
+// Hooks
+export { useVideoCall } from './hooks/use-video-call';
+export { useMediaStream } from './hooks/use-media-stream';
+export { usePeerConnection } from './hooks/use-peer-connection';

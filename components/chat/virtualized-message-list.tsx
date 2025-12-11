@@ -159,7 +159,7 @@ export function VirtualizedMessageList({
             >
               <div className="flex items-center gap-3 my-4">
                 <Separator className="flex-1" />
-                <div className="px-3 py-1 rounded-full bg-surface-200/50 dark:bg-surface-800/50 text-xs text-surface-500 dark:text-surface-400 font-medium">
+                <div className="px-3 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground font-medium">
                   {formatDate(item.date!)}
                 </div>
                 <Separator className="flex-1" />

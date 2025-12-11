@@ -29,26 +29,26 @@ export function TypingIndicator({ users, className }: TypingIndicatorProps) {
   return (
     <div className={cn("flex items-end gap-2 mt-3", className)}>
       {/* Avatar placeholder */}
-      <div className="w-8 h-8 rounded-full bg-surface-200 dark:bg-surface-700 flex-shrink-0" />
+      <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0" />
 
       {/* Typing bubble */}
-      <div className="bg-white dark:bg-surface-800 rounded-2xl rounded-bl-md border border-surface-200 dark:border-surface-700 px-4 py-3">
+      <div className="bg-background rounded-2xl rounded-bl-md border border-border px-4 py-3">
         <div className="flex items-center gap-2">
           {/* Animated dots */}
           <div className="flex items-center gap-1">
-            <span className="w-2 h-2 bg-surface-400 dark:bg-surface-500 rounded-full animate-typing-dot" />
+            <span className="w-2 h-2 bg-muted-foreground rounded-full animate-typing-dot" />
             <span
-              className="w-2 h-2 bg-surface-400 dark:bg-surface-500 rounded-full animate-typing-dot"
+              className="w-2 h-2 bg-muted-foreground rounded-full animate-typing-dot"
               style={{ animationDelay: "0.2s" }}
             />
             <span
-              className="w-2 h-2 bg-surface-400 dark:bg-surface-500 rounded-full animate-typing-dot"
+              className="w-2 h-2 bg-muted-foreground rounded-full animate-typing-dot"
               style={{ animationDelay: "0.4s" }}
             />
           </div>
 
           {/* Typing text */}
-          <span className="text-xs text-surface-500 dark:text-surface-400">
+          <span className="text-xs text-muted-foreground">
             {getTypingText()}
           </span>
         </div>

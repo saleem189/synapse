@@ -11,9 +11,13 @@ import { Send, Paperclip, X, File as FileIcon, Image as ImageIconLucide, Video, 
 import Image from "next/image";
 import { toast } from "sonner";
 import { cn, debounce } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { EmojiPicker } from "./emoji-picker";
 import { VoiceRecorder } from "./voice-recorder";
 import { useFileUpload } from "@/hooks";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 // Features
 import {
   useMentions,
@@ -330,40 +334,42 @@ export function MessageInput({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       className={cn(
-        "relative px-4 py-3 bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-surface-800",
-        isDragging && "bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700"
+        "relative px-4 py-3 bg-background border-t border-border",
+        isDragging && "bg-primary/10 border-primary/30"
       )}
     >
       {/* Reply Preview */}
       {replyTo && (
-        <div className="mb-2 px-3 py-2 rounded-lg bg-primary-50 dark:bg-primary-900/20 border-l-3 border-primary-500 flex items-start gap-2">
-          <Reply className="w-4 h-4 text-primary-600 dark:text-primary-400 mt-0.5 flex-shrink-0" />
+        <div className="mb-2 px-3 py-2 rounded-lg bg-primary/10 border-l-3 border-primary flex items-start gap-2">
+          <Reply className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-primary-700 dark:text-primary-300 mb-0.5">
+            <p className="text-xs font-semibold text-primary mb-0.5">
               {replyTo.senderName}
             </p>
-            <p className="text-xs text-surface-600 dark:text-surface-400 truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {replyTo.content}
             </p>
           </div>
           {onCancelReply && (
-            <button
+            <Button
               onClick={onCancelReply}
-              className="w-6 h-6 rounded-full hover:bg-primary-100 dark:hover:bg-primary-900/40 flex items-center justify-center text-primary-600 dark:text-primary-400 transition-colors flex-shrink-0"
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6 rounded-full hover:bg-primary/20 text-primary flex-shrink-0"
               title="Cancel reply"
             >
               <X className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           )}
         </div>
       )}
 
       {/* Drag overlay */}
       {isDragging && (
-        <div className="absolute inset-0 bg-primary-500/10 dark:bg-primary-500/20 border-2 border-dashed border-primary-500 rounded-lg flex items-center justify-center z-50 pointer-events-none">
+        <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
           <div className="text-center">
-            <Paperclip className="w-12 h-12 text-primary-600 dark:text-primary-400 mx-auto mb-2" />
-            <p className="text-sm font-medium text-primary-600 dark:text-primary-400">Drop file to upload</p>
+            <Paperclip className="w-12 h-12 text-primary mx-auto mb-2" />
+            <p className="text-sm font-medium text-primary">Drop file to upload</p>
           </div>
         </div>
       )}
@@ -372,7 +378,7 @@ export function MessageInput({
       {selectedFile && (
         <div className="mb-2 relative">
           {isImage ? (
-            <div className="relative inline-block rounded-lg overflow-hidden border border-surface-200 dark:border-surface-700 max-w-xs shadow-sm">
+            <div className="relative inline-block rounded-lg overflow-hidden border border-border max-w-xs shadow-sm">
               <Image
                 src={selectedFile.url}
                 alt={selectedFile.fileName}
@@ -382,16 +388,18 @@ export function MessageInput({
                 className="max-h-64 w-auto object-cover rounded-lg"
                 unoptimized={selectedFile.url.startsWith('/uploads')}
               />
-              <button
+              <Button
                 onClick={() => setSelectedFile(null)}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors shadow-lg"
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black/90 text-white shadow-lg"
                 title="Remove file"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           ) : isVideo ? (
-            <div className="relative inline-block rounded-lg overflow-hidden border border-surface-200 dark:border-surface-700 max-w-xs shadow-sm">
+            <div className="relative inline-block rounded-lg overflow-hidden border border-border max-w-xs shadow-sm">
               <video
                 src={selectedFile.url}
                 controls
@@ -406,28 +414,30 @@ export function MessageInput({
               </button>
             </div>
           ) : (
-            <div className="relative inline-flex items-center gap-3 p-3 rounded-lg bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
-              <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+            <div className="relative inline-flex items-center gap-3 p-3 rounded-lg bg-muted border border-border">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 {(() => {
                   const Icon = getFileIcon(selectedFile.fileType);
-                  return <Icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />;
+                  return <Icon className="w-5 h-5 text-primary" />;
                 })()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-surface-900 dark:text-white truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {selectedFile.fileName}
                 </p>
-                <p className="text-xs text-surface-500">
+                <p className="text-xs text-muted-foreground">
                   {formatFileSize(selectedFile.fileSize)}
                 </p>
               </div>
-              <button
+              <Button
                 onClick={() => setSelectedFile(null)}
-                className="w-6 h-6 rounded-full hover:bg-surface-200 dark:hover:bg-surface-700 flex items-center justify-center text-surface-500 flex-shrink-0"
+                variant="ghost"
+                size="icon"
+                className="w-6 h-6 rounded-full hover:bg-accent text-muted-foreground flex-shrink-0"
                 title="Remove file"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -435,9 +445,9 @@ export function MessageInput({
 
       {/* Uploading indicator */}
       {uploadingFile && (
-        <div className="mb-2 p-3 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 flex items-center gap-3">
-          <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-primary-600 dark:text-primary-400">Uploading file...</p>
+        <div className="mb-2 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-primary">Uploading file...</p>
         </div>
       )}
 
@@ -466,7 +476,10 @@ export function MessageInput({
                 toast.error("Failed to upload voice message");
               }
             } catch (error) {
-              console.error("Error uploading voice message:", error);
+              logger.error("Error uploading voice message", error instanceof Error ? error : new Error(String(error)), {
+                component: 'MessageInput',
+                action: 'uploadVoiceMessage',
+              });
               toast.error("An error occurred while uploading the voice message");
             }
             // Note: No need to manually set uploading state - upload() handles it
@@ -483,19 +496,26 @@ export function MessageInput({
         />
 
         {/* Attachment Button */}
-        <label className="w-10 h-10 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors flex-shrink-0 cursor-pointer" title="Attach file">
-          <input
-            type="file"
-            onChange={handleFileSelect}
-            className="hidden"
-            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-          />
-          <Paperclip className="w-5 h-5" />
-        </label>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <label className="w-10 h-10 rounded-xl hover:bg-accent hover:text-accent-foreground flex items-center justify-center text-muted-foreground transition-colors flex-shrink-0 cursor-pointer">
+                <input
+                  type="file"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+                />
+                <Paperclip className="w-5 h-5" />
+              </label>
+            </TooltipTrigger>
+            <TooltipContent>Attach file</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Input Container */}
         <div className="flex-1 relative">
-          <textarea
+          <Textarea
             ref={textareaRef}
             value={displayMessage}
             onChange={handleChange}
@@ -506,12 +526,6 @@ export function MessageInput({
             rows={1}
             className={cn(
               "w-full px-4 py-3 pr-12 rounded-2xl resize-none",
-              "bg-surface-100 dark:bg-surface-800",
-              "text-surface-900 dark:text-surface-100",
-              "placeholder:text-surface-400 dark:placeholder:text-surface-500",
-              "focus:outline-none focus:ring-2 focus:ring-primary-500/20",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-              "transition-all duration-200",
               "max-h-[150px] scrollbar-hide"
             )}
           />
@@ -533,23 +547,24 @@ export function MessageInput({
         </div>
 
         {/* Send Button */}
-        <button
+        <Button
           onClick={handleSend}
           disabled={(!message.trim() && !selectedFile) || disabled || uploadingFile}
+          size="icon"
           className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 flex-shrink-0",
+            "w-10 h-10 rounded-xl flex-shrink-0",
             (message.trim() || selectedFile) && !uploadingFile
-              ? "bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-500/25"
-              : "bg-surface-100 dark:bg-surface-800 text-surface-400 cursor-not-allowed"
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"
+              : ""
           )}
           title="Send message"
         >
           <Send className="w-5 h-5" />
-        </button>
+        </Button>
       </div>
 
       {/* Helper text */}
-      <p className="text-xs text-surface-400 dark:text-surface-500 mt-2 text-center">
+      <p className="text-xs text-muted-foreground mt-2 text-center">
         Press Enter to send, Shift + Enter for new line
       </p>
     </div>

@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useOnlineUsers } from "@/hooks/use-online-users";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
 import {
   Search,
   MoreVertical,
@@ -82,7 +83,11 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
         prev.map((u) => (u.id === userId ? { ...u, role } : u))
       );
     } catch (error) {
-      console.error("Failed to update role:", error);
+      logger.error("Failed to update role", error instanceof Error ? error : new Error(String(error)), {
+        component: 'UsersTable',
+        userId,
+        role,
+      });
     } finally {
       setIsLoading(null);
       setSelectedUser(null);
@@ -105,24 +110,27 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
       setDeleteDialogOpen(false);
       setUserToDelete(null);
     } catch (error) {
-      console.error("Failed to delete user:", error);
+      logger.error("Failed to delete user", error instanceof Error ? error : new Error(String(error)), {
+        component: 'UsersTable',
+        userId: userToDelete,
+      });
     } finally {
       setIsLoading(null);
     }
   };
 
   return (
-    <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 overflow-hidden">
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
       {/* Search */}
-      <div className="p-4 border-b border-surface-200 dark:border-surface-800">
+      <div className="p-4 border-b border-border">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-surface-100 dark:bg-surface-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 transition-colors"
           />
         </div>
       </div>
@@ -132,25 +140,25 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 User
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Status
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Role
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Messages
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Rooms
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Joined
               </TableHead>
-              <TableHead className="text-right text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-right text-xs font-semibold text-muted-foreground uppercase">
                 Actions
               </TableHead>
             </TableRow>
@@ -162,7 +170,7 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
               return (
                 <TableRow
                   key={user.id}
-                  className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors"
+                  className="hover:bg-accent/50 transition-colors"
                 >
                   {/* User */}
                   <TableCell>
@@ -172,14 +180,14 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                           {getInitials(user.name)}
                         </div>
                         {isOnline && (
-                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-surface-900" />
+                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-surface-900 dark:text-white">
+                        <p className="font-medium text-foreground">
                           {user.name}
                         </p>
-                        <p className="text-xs text-surface-500">{user.email}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -191,13 +199,13 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                         "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
                         isOnline
                           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-surface-100 text-surface-500 dark:bg-surface-800"
+                          : "bg-muted text-muted-foreground"
                       )}
                     >
                       <span
                         className={cn(
                           "w-1.5 h-1.5 rounded-full",
-                          isOnline ? "bg-green-500" : "bg-surface-400"
+                          isOnline ? "bg-green-500" : "bg-muted-foreground/40"
                         )}
                       />
                       {isOnline ? "Online" : "Offline"}
@@ -220,17 +228,17 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                   </TableCell>
 
                   {/* Messages */}
-                  <TableCell className="text-surface-600 dark:text-surface-300">
+                  <TableCell className="text-foreground">
                     {user._count.messages}
                   </TableCell>
 
                   {/* Rooms */}
-                  <TableCell className="text-surface-600 dark:text-surface-300">
+                  <TableCell className="text-foreground">
                     {user._count.rooms}
                   </TableCell>
 
                   {/* Joined */}
-                  <TableCell className="text-sm text-surface-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {formatMessageTime(user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt)}
                   </TableCell>
 
@@ -241,14 +249,14 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                         onClick={() =>
                           setSelectedUser(selectedUser === user.id ? null : user.id)
                         }
-                        className="w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center justify-center"
+                        className="w-8 h-8 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"
                       >
-                        <MoreVertical className="w-4 h-4 text-surface-500" />
+                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
                       </button>
 
                       {/* Dropdown */}
                       {selectedUser === user.id && (
-                        <div className="absolute right-0 top-10 z-10 w-48 bg-white dark:bg-surface-800 rounded-lg shadow-lg border border-surface-200 dark:border-surface-700 py-1">
+                        <div className="absolute right-0 top-10 z-10 w-48 bg-card rounded-lg shadow-lg border border-border py-1">
                           <button
                             onClick={() =>
                               updateRole(
@@ -257,7 +265,7 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                               )
                             }
                             disabled={isLoading === user.id}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-100 dark:hover:bg-surface-700"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                           >
                             <Shield className="w-4 h-4" />
                             {user.role === "ADMIN"
@@ -267,7 +275,7 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                           <button
                             onClick={() => handleDeleteClick(user.id)}
                             disabled={isLoading === user.id}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                             Delete User
@@ -284,7 +292,7 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
       </div>
 
       {filteredUsers.length === 0 && (
-        <div className="p-8 text-center text-surface-500">
+        <div className="p-8 text-center text-muted-foreground">
           No users found
         </div>
       )}
@@ -302,7 +310,7 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={deleteUser}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-ring"
             >
               Delete
             </AlertDialogAction>

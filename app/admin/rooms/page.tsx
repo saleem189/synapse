@@ -4,7 +4,8 @@
 
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
-import prisma from "@/lib/prisma";
+import { getService } from "@/lib/di";
+import { AdminService } from "@/lib/services/admin.service";
 
 // Lazy load heavy table component for better initial load performance
 const RoomsTable = dynamic(
@@ -26,36 +27,9 @@ const RoomsTable = dynamic(
 );
 
 async function getRooms() {
-  const rooms = await prisma.chatRoom.findMany({
-    include: {
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      participants: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      },
-      _count: {
-        select: {
-          messages: true,
-          participants: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
+  // Use AdminService instead of direct Prisma access
+  const adminService = await getService<AdminService>('adminService');
+  const rooms = await adminService.getAllRooms();
   return rooms;
 }
 

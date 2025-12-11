@@ -9,6 +9,7 @@ import { X, Upload, Image as ImageIcon, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
 import {
   Dialog,
   DialogContent,
@@ -58,7 +59,10 @@ export function RoomSettingsModal({
       onUpdate();
       onClose();
     } catch (error) {
-      console.error("Error updating room:", error);
+      logger.error("Error updating room", error instanceof Error ? error : new Error(String(error)), {
+        component: 'RoomSettingsModal',
+        roomId: room.id,
+      });
       // Error toast is handled by API client
     } finally {
       setIsSaving(false);
@@ -95,8 +99,8 @@ export function RoomSettingsModal({
                 className={cn(
                   "w-24 h-24 rounded-2xl flex items-center justify-center text-white text-3xl font-bold",
                   avatar
-                    ? "bg-gradient-to-br from-primary-400 to-accent-500"
-                    : "bg-gradient-to-br from-primary-500 to-accent-500"
+                    ? "bg-gradient-to-br from-primary to-accent"
+                    : "bg-gradient-to-br from-primary to-accent"
                 )}
                 style={
                   avatar && avatar.startsWith("http")
@@ -106,8 +110,8 @@ export function RoomSettingsModal({
               >
                 {!avatar || !avatar.startsWith("http") ? room.name.charAt(0).toUpperCase() : null}
               </div>
-              <label className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-700 transition-colors">
-                <Upload className="w-4 h-4 text-white" />
+              <label className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
+                <Upload className="w-4 h-4 text-primary-foreground" />
                 <input
                   type="file"
                   accept="image/*"
@@ -116,12 +120,12 @@ export function RoomSettingsModal({
                 />
               </label>
             </div>
-            <p className="text-sm text-surface-500">Click icon to upload avatar</p>
+            <p className="text-sm text-muted-foreground">Click icon to upload avatar</p>
           </div>
 
           {/* Room Name */}
           <div>
-            <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Room Name
             </label>
             <Input
@@ -136,7 +140,7 @@ export function RoomSettingsModal({
           {/* Description */}
           {room.isGroup && (
             <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Description
               </label>
               <Textarea

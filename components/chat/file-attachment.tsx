@@ -10,6 +10,8 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { VoiceMessage } from "./voice-message";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface FileAttachmentProps {
   fileUrl: string;
@@ -91,21 +93,21 @@ export function FileAttachment({
         isVideo && "max-w-md",
         !isImage && !isVideo && "border",
         isSent && !isImage && !isVideo
-          ? "border-primary-500/30"
+          ? "border-primary/20"
           : !isImage && !isVideo
-          ? "border-surface-200 dark:border-surface-700"
+          ? "border-border"
           : ""
       )}>
         {isImage ? (
-          <div className="relative group w-full h-[300px] bg-surface-100 dark:bg-surface-800 rounded-lg overflow-hidden flex items-center justify-center" style={{ transition: "none" }}>
+          <div className="relative group w-full h-[300px] bg-muted rounded-lg overflow-hidden flex items-center justify-center" style={{ transition: "none" }}>
             {/* Loading Spinner */}
             {!imageLoaded && !imageError && (
               <div 
-                className="absolute inset-0 w-full h-[300px] bg-surface-100 dark:bg-surface-800 flex flex-col items-center justify-center rounded-lg z-10" 
+                className="absolute inset-0 w-full h-[300px] bg-muted flex flex-col items-center justify-center rounded-lg z-10" 
                 style={{ transition: "none" }}
               >
-                <div className="w-10 h-10 border-4 border-primary-200 dark:border-primary-800 border-t-primary-600 dark:border-t-primary-400 rounded-full animate-spin mb-2"></div>
-                <p className="text-xs text-surface-500 dark:text-surface-400">Loading image...</p>
+                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-2"></div>
+                <p className="text-xs text-muted-foreground">Loading image...</p>
               </div>
             )}
             <Image
@@ -154,32 +156,46 @@ export function FileAttachment({
               unoptimized={fileUrl.startsWith('/uploads')} // Unoptimize local uploads
             />
             {imageError && (
-              <div className="absolute inset-0 w-full h-[300px] bg-surface-100 dark:bg-surface-800 flex items-center justify-center rounded-lg z-20">
+              <div className="absolute inset-0 w-full h-[300px] bg-muted flex items-center justify-center rounded-lg z-20">
                 <div className="text-center">
-                  <ImageIcon className="w-8 h-8 text-surface-400 mx-auto mb-2" />
-                  <p className="text-xs text-surface-500">Failed to load image</p>
-                  <p className="text-xs text-surface-400 mt-1 break-all px-2">{fileUrl}</p>
+                  <ImageIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">Failed to load image</p>
+                  <p className="text-xs text-muted-foreground mt-1 break-all px-2">{fileUrl}</p>
                 </div>
               </div>
             )}
             {/* Hover overlay with actions */}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100" style={{ transition: "none" }}>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleImageClick}
-                  className="w-10 h-10 rounded-full bg-white/90 dark:bg-surface-900/90 flex items-center justify-center hover:bg-white transition-colors shadow-lg"
-                  title="View fullscreen"
-                >
-                  <Maximize2 className="w-5 h-5 text-surface-900 dark:text-white" />
-                </button>
-                <button
-                  onClick={(e) => handleDownload(e)}
-                  className="w-10 h-10 rounded-full bg-white/90 dark:bg-surface-900/90 flex items-center justify-center hover:bg-white transition-colors shadow-lg"
-                  title="Download"
-                >
-                  <Download className="w-5 h-5 text-surface-900 dark:text-white" />
-                </button>
-              </div>
+              <TooltipProvider>
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleImageClick}
+                        variant="ghost"
+                        size="icon"
+                        className="w-10 h-10 rounded-full bg-background/90 hover:bg-background shadow-lg"
+                      >
+                        <Maximize2 className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>View fullscreen</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={(e) => handleDownload(e)}
+                        variant="ghost"
+                        size="icon"
+                        className="w-10 h-10 rounded-full bg-background/90 hover:bg-background shadow-lg"
+                      >
+                        <Download className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
             </div>
           </div>
         ) : isVideo ? (
@@ -202,7 +218,7 @@ export function FileAttachment({
           <Card
             className={cn(
               "cursor-pointer hover:shadow-md transition-all",
-              isSent ? "bg-primary-500/10 border-primary-400/30" : ""
+              isSent ? "bg-primary/10 border-primary/20" : ""
             )}
             onClick={handleDownload}
           >
@@ -210,8 +226,8 @@ export function FileAttachment({
             <div className={cn(
               "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
               isSent
-                ? "bg-primary-600 text-white"
-                : "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
+                ? "bg-primary text-primary-foreground"
+                : "bg-primary/10 text-primary"
             )}>
               {(() => {
                 const Icon = getFileIcon();
@@ -221,20 +237,20 @@ export function FileAttachment({
             <div className="flex-1 min-w-0">
               <p className={cn(
                 "text-sm font-medium truncate",
-                isSent ? "text-white" : "text-surface-900 dark:text-white"
+                isSent ? "text-primary-foreground" : "text-foreground"
               )}>
                 {fileName}
               </p>
               <p className={cn(
                 "text-xs",
-                isSent ? "text-primary-200" : "text-surface-500"
+                isSent ? "text-primary-foreground/80" : "text-muted-foreground"
               )}>
                 {formatFileSize(fileSize)}
               </p>
             </div>
             <Download className={cn(
               "w-5 h-5 flex-shrink-0",
-              isSent ? "text-primary-200" : "text-surface-400"
+              isSent ? "text-primary-foreground/80" : "text-muted-foreground"
             )} />
             </CardContent>
           </Card>
@@ -247,13 +263,15 @@ export function FileAttachment({
           className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
           onClick={() => setShowFullscreen(false)}
         >
-          <button
+          <Button
             onClick={() => setShowFullscreen(false)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white"
             title="Close"
           >
             <X className="w-6 h-6" />
-          </button>
+          </Button>
           <Image
             src={fileUrl}
             alt={fileName}

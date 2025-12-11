@@ -73,13 +73,13 @@ export function RealtimeChart() {
       {/* Stats */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-3xl font-bold text-surface-900 dark:text-white">
+          <p className="text-3xl font-bold text-foreground">
             {messagesPerMinute}
           </p>
-          <p className="text-sm text-surface-500">msgs/min (approx)</p>
+          <p className="text-sm text-muted-foreground">msgs/min (approx)</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-surface-400">
-          <span className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
           Updating every 3s
         </div>
       </div>
@@ -97,10 +97,10 @@ export function RealtimeChart() {
             >
               <div
                 className={`w-full rounded-t transition-all duration-300 ${isLast
-                  ? "bg-primary-500"
+                  ? "bg-primary"
                   : point.count > 0
-                    ? "bg-primary-400/60"
-                    : "bg-surface-200 dark:bg-surface-700"
+                    ? "bg-primary/60"
+                    : "bg-muted"
                   }`}
                 style={{ height: `${Math.max(height, 4)}%` }}
               />
@@ -110,7 +110,7 @@ export function RealtimeChart() {
       </div>
 
       {/* Time labels */}
-      <div className="flex justify-between text-xs text-surface-400">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>{dataPoints[0]?.time}</span>
         <span>{dataPoints[dataPoints.length - 1]?.time}</span>
       </div>

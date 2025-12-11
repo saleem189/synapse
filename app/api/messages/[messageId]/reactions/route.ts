@@ -8,6 +8,8 @@ import { authOptions } from "@/lib/auth";
 import { handleError, UnauthorizedError } from "@/lib/errors";
 import { getService } from "@/lib/di";
 import { MessageService } from "@/lib/services/message.service";
+import { MessageRepository } from "@/lib/repositories/message.repository";
+import { broadcastReactionUpdate } from "@/lib/socket-server-client";
 
 // Services are resolved asynchronously inside route handlers
 
@@ -42,6 +44,18 @@ export async function POST(
       session.user.id,
       emoji
     );
+
+    // Get updated reactions to broadcast
+    const updatedReactions = await messageService.getReactions(messageId, session.user.id);
+    
+    // Get message to find roomId
+    const messageRepo = await getService<MessageRepository>('messageRepository');
+    const message = await messageRepo.findById(messageId);
+    
+    // Broadcast reaction update via socket
+    if (message?.roomId) {
+      await broadcastReactionUpdate(message.roomId, messageId, updatedReactions);
+    }
 
     return NextResponse.json(result);
   } catch (error) {

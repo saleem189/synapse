@@ -261,6 +261,83 @@ export async function broadcastMessage(
 }
 
 /**
+ * Broadcast a reaction update to all users in a room
+ * This is called by API routes after toggling a reaction
+ */
+export async function broadcastReactionUpdate(
+  roomId: string,
+  messageId: string,
+  reactions: Record<string, Array<{ id: string; name: string; avatar: string | null }>>
+): Promise<void> {
+  try {
+    const socket = await getServerSocket();
+    const logger = await getLogger();
+    
+    // Wait for connection if not connected
+    if (!socket.connected) {
+      logger.log('Waiting for server socket connection', {
+        component: 'SocketServerClient',
+      });
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("Socket connection timeout"));
+        }, 5000);
+
+        if (socket.connected) {
+          clearTimeout(timeout);
+          resolve();
+          return;
+        }
+
+        socket.once("connect", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+
+        socket.once("connect_error", (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      });
+    }
+
+    // Wait a bit more to ensure server handlers are fully set up
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Log before emitting (development only for verbose logging)
+    if (process.env.NODE_ENV === 'development') {
+      logger.log('API emitting reaction update to socket server', {
+        component: 'SocketServerClient',
+        messageId,
+        roomId,
+        socketId: socket.id,
+        connected: socket.connected,
+      });
+    }
+    
+    // Emit reaction-updated event to the socket server
+    // The server will broadcast it to all clients in the room
+    socket.emit("reaction-updated", {
+      messageId,
+      roomId,
+      reactions,
+    });
+  } catch (error) {
+    try {
+      const logger = await getLogger();
+      logger.error('Failed to broadcast reaction update via socket', error, {
+        component: 'SocketServerClient',
+        messageId,
+        roomId,
+      });
+    } catch {
+      console.error('[SocketServerClient] Failed to broadcast reaction update via socket:', error);
+    }
+    // Don't throw - reaction was saved, just socket broadcast failed
+  }
+}
+
+/**
  * Disconnect the server socket client
  */
 export function disconnectServerSocket(): void {

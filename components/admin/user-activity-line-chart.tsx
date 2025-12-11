@@ -72,15 +72,15 @@ export function UserActivityLineChart() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             User Activity (Real-time)
           </h3>
-          <p className="text-2xl font-bold text-surface-900 dark:text-white">
+          <p className="text-2xl font-bold text-foreground">
             {onlineCount}
-            <span className="text-sm text-surface-500 ml-1">online</span>
+            <span className="text-sm text-muted-foreground ml-1">online</span>
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-surface-400">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           Live
         </div>
@@ -94,7 +94,7 @@ export function UserActivityLineChart() {
               <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-surface-700" />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis
             dataKey="time"
             tick={{ fill: "#6b7280", fontSize: 10 }}

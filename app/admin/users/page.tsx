@@ -4,7 +4,8 @@
 
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
-import prisma from "@/lib/prisma";
+import { getService } from "@/lib/di";
+import { AdminService } from "@/lib/services/admin.service";
 
 // Lazy load heavy table component for better initial load performance
 const UsersTable = dynamic(
@@ -26,25 +27,9 @@ const UsersTable = dynamic(
 );
 
 async function getUsers() {
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      status: true,
-      lastSeen: true,
-      createdAt: true,
-      _count: {
-        select: {
-          messages: true,
-          rooms: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
+  // Use AdminService instead of direct Prisma access
+  const adminService = await getService<AdminService>('adminService');
+  const users = await adminService.getAllUsers();
   return users;
 }
 

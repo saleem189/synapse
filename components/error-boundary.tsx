@@ -86,20 +86,23 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error using centralized logger
-    logger.error("Error caught by boundary", {
-      error: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
+    const errorMessage = error?.message || "Unknown error";
+    const errorStack = error?.stack || "No stack trace available";
+    
+    logger.error("Error caught by boundary", error instanceof Error ? error : new Error(errorMessage), {
+      error: errorMessage,
+      stack: errorStack,
+      componentStack: errorInfo?.componentStack || "No component stack",
     });
 
     // Update state with error info
     this.setState({
-      error,
+      error: error || new Error(errorMessage),
       errorInfo,
     });
 
     // Call custom error handler if provided
-    this.props.onError?.(error, errorInfo);
+    this.props.onError?.(error || new Error(errorMessage), errorInfo);
   }
 
   componentDidUpdate(prevProps: ErrorBoundaryProps) {

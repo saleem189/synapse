@@ -93,15 +93,15 @@ export function MessageActivityChart() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             Message Activity
           </h3>
-          <p className="text-sm text-surface-500">Last 24 minutes (1 bar = 1 minute)</p>
+          <p className="text-sm text-muted-foreground">Last 24 minutes (1 bar = 1 minute)</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
-          <span className="text-surface-500">
-            Live: <span className="font-semibold text-primary-600 dark:text-primary-400">{liveMessages}</span> msgs
+          <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+          <span className="text-muted-foreground">
+            Live: <span className="font-semibold text-primary">{liveMessages}</span> msgs
           </span>
         </div>
       </div>

@@ -33,6 +33,18 @@ enum MessageType {
   AUDIO
 }
 
+enum CallType {
+  VIDEO
+  AUDIO
+}
+
+enum CallStatus {
+  ACTIVE
+  ENDED
+  MISSED
+  REJECTED
+}
+
 // ================================
 // User Model
 // ================================
@@ -54,6 +66,7 @@ model User {
   reactions         MessageReaction[]
   readMessages      MessageRead[]
   pushSubscriptions PushSubscription[]
+  callSessions      CallParticipant[]
 
   @@index([email]) // Already unique, but explicit index for search queries
   @@index([status]) // For filtering by online/offline status
@@ -78,6 +91,7 @@ model ChatRoom {
 
   messages     Message[]
   participants RoomParticipant[]
+  callSessions CallSession[]
 
   @@index([ownerId]) // For faster owner queries
   @@index([updatedAt]) // For room list sorting by activity
@@ -208,4 +222,49 @@ model Config {
   createdAt DateTime @default(now())
 
   @@map("configs")
+}
+
+// ================================
+// Call Session Model
+// ================================
+model CallSession {
+  id            String      @id @default(cuid())
+  roomId        String
+  room          ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  callType      CallType    @default(VIDEO)
+  status        CallStatus  @default(ACTIVE)
+  
+  startedAt     DateTime    @default(now())
+  endedAt       DateTime?
+  duration      Int?        // Duration in seconds
+  
+  participants  CallParticipant[]
+  
+  @@index([roomId])
+  @@index([startedAt])
+  @@index([status])
+  @@map("call_sessions")
+}
+
+// ================================
+// Call Participant Model
+// ================================
+model CallParticipant {
+  id            String       @id @default(cuid())
+  callSessionId String
+  callSession   CallSession  @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  joinedAt      DateTime     @default(now())
+  leftAt        DateTime?
+  wasMuted      Boolean      @default(false)
+  hadVideo      Boolean      @default(true)
+  
+  @@unique([callSessionId, userId])
+  @@index([userId])
+  @@index([callSessionId])
+  @@map("call_participants")
 }

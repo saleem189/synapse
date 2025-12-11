@@ -17,8 +17,6 @@ import {
   Settings,
   Users,
   Hash,
-  Menu,
-  X,
   Shield,
   Filter,
 } from "lucide-react";
@@ -26,8 +24,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { cn, getInitials, formatChatListTime } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInput,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuBadge,
+  SidebarRail,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
 import { logger } from "@/lib/logger";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 // Code split modals for better initial load performance
@@ -75,17 +88,14 @@ export function ChatSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
-  // Use UI store for modals and sidebar
+  // Use UI store for modals
   // Use individual selectors to prevent unnecessary re-renders
   const isCreateRoomModalOpen = useUIStore((state) => state.isCreateRoomModalOpen);
   const isSettingsModalOpen = useUIStore((state) => state.isSettingsModalOpen);
-  const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const openCreateRoomModal = useUIStore((state) => state.openCreateRoomModal);
   const closeCreateRoomModal = useUIStore((state) => state.closeCreateRoomModal);
   const openSettingsModal = useUIStore((state) => state.openSettingsModal);
   const closeSettingsModal = useUIStore((state) => state.closeSettingsModal);
-  const openSidebar = useUIStore((state) => state.openSidebar);
-  const closeSidebar = useUIStore((state) => state.closeSidebar);
 
   // Use centralized hooks
   const { socket, isConnected } = useSocket({ emitUserConnect: true });
@@ -257,260 +267,242 @@ export function ChatSidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={openSidebar}
-        className="fixed top-4 left-4 z-50 lg:hidden w-10 h-10 rounded-xl bg-white dark:bg-surface-800 shadow-lg flex items-center justify-center"
-      >
-        <Menu className="w-5 h-5 text-surface-600 dark:text-surface-400" />
-        {totalUnread > 0 && (
-          <Badge variant="destructive" className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center p-0">
-            {totalUnread > 9 ? "9+" : totalUnread}
-          </Badge>
-        )}
-      </button>
-
-      {/* Mobile Overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "w-80 h-full flex flex-col bg-white dark:bg-surface-900 border-r border-surface-200 dark:border-surface-800",
-          "fixed lg:relative z-50 lg:z-auto transition-transform duration-300",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        )}
-      >
-        {/* Header */}
-        <div className="p-4">
-          <Separator className="mb-4" />
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-surface-900 dark:text-white">
-                ChatFlow
-              </span>
+      <Sidebar>
+        <SidebarHeader>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <MessageCircle className="w-5 h-5 text-white" />
             </div>
-
-            <button
-              onClick={closeSidebar}
-              className="lg:hidden w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center"
-            >
-              <X className="w-5 h-5 text-surface-600 dark:text-surface-400" />
-            </button>
+            <span className="text-xl font-bold text-sidebar-foreground">
+              ChatFlow
+            </span>
           </div>
 
-          {/* Search and Filter */}
-          <div className="space-y-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-              <input
-                type="text"
+          {/* Search */}
+          <SidebarGroup>
+            <SidebarGroupContent className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-muted-foreground pointer-events-none" />
+              <SidebarInput
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                className="pl-8"
               />
-            </div>
-            <button
-              onClick={() => setShowUnreadOnly(!showUnreadOnly)}
-              className={cn(
-                "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                showUnreadOnly
-                  ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-                  : "bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700"
-              )}
-            >
-              <Filter className="w-4 h-4" />
-              {showUnreadOnly ? "Show All" : "Unread Only"}
-              {showUnreadOnly && totalUnread > 0 && (
-                <Badge variant="destructive" className="ml-auto">
-                  {totalUnread}
-                </Badge>
-              )}
-            </button>
-          </div>
-        </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-        {/* New Chat Button */}
-        <div className="p-3">
-          <button
-            onClick={openCreateRoomModal}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            New Chat
-          </button>
-        </div>
+          {/* Filter Button */}
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <Button
+                onClick={() => setShowUnreadOnly(!showUnreadOnly)}
+                variant={showUnreadOnly ? "default" : "outline"}
+                className="w-full justify-center gap-2"
+                size="sm"
+              >
+                <Filter className="w-4 h-4" />
+                {showUnreadOnly ? "Show All" : "Unread Only"}
+                {showUnreadOnly && totalUnread > 0 && (
+                  <Badge variant="destructive" className="ml-auto">
+                    {totalUnread}
+                  </Badge>
+                )}
+              </Button>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-        {/* Rooms List */}
-        <ScrollArea className="flex-1 px-3 pb-3">
+          {/* New Chat Button */}
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <Button
+                onClick={openCreateRoomModal}
+                className="w-full"
+                size="sm"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Chat
+              </Button>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarHeader>
+
+        <SidebarContent>
           {isLoading ? (
-            <div className="space-y-2 p-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl">
-                  <Skeleton className="w-12 h-12 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : filteredRooms.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="w-12 h-12 text-surface-300 dark:text-surface-600 mx-auto mb-3" />
-              <p className="text-sm text-surface-500">
-                {showUnreadOnly
-                  ? "No unread messages"
-                  : searchQuery
-                    ? "No conversations found"
-                    : "No conversations yet"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {filteredRooms.map((room) => {
-                const isActive = pathname === `/chat/${room.id}`;
-                const displayName = getRoomDisplayName(room);
-                const isOnline = isRoomOnline(room);
-
-                return (
-                  <Link
-                    key={room.id}
-                    href={`/chat/${room.id}`}
-                    onClick={closeSidebar}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-xl transition-all duration-200",
-                      isActive
-                        ? "bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800"
-                        : "hover:bg-surface-100 dark:hover:bg-surface-800"
-                    )}
-                  >
-                    {/* Avatar */}
-                    <div className="relative flex-shrink-0">
-                      <Avatar className={cn(
-                        "w-12 h-12",
-                        room.isGroup
-                          ? "bg-gradient-to-br from-accent-400 to-pink-500"
-                          : "bg-gradient-to-br from-primary-400 to-blue-500"
-                      )}>
-                        <AvatarImage src={room.avatar || undefined} alt={displayName} />
-                        <AvatarFallback className={cn(
-                          "text-white font-semibold",
-                          room.isGroup
-                            ? "bg-gradient-to-br from-accent-400 to-pink-500"
-                            : "bg-gradient-to-br from-primary-400 to-blue-500"
-                        )}>
-                          {room.isGroup ? <Hash className="w-5 h-5" /> : getInitials(displayName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      {isOnline && (
-                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-surface-900" />
-                      )}
-                    </div>
-
-                    {/* Room Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className={cn(
-                          "font-medium truncate",
-                          isActive ? "text-primary-700 dark:text-primary-300" : "text-surface-900 dark:text-white"
-                        )}>
-                          {displayName}
-                        </h3>
-                        {room.lastMessage && (
-                          <span className="text-xs text-surface-400 flex-shrink-0 ml-2">
-                            {formatChatListTime(room.lastMessage.createdAt)}
-                          </span>
-                        )}
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className="space-y-2">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 p-2 animate-in fade-in-50 slide-in-from-left-4"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
+                      <Skeleton className="w-10 h-10 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
                       </div>
-                      {room.lastMessage && (
-                        <p className={cn(
-                          "text-sm truncate",
-                          room.unreadCount ? "text-surface-900 dark:text-white font-medium" : "text-surface-500"
-                        )}>
-                          {room.lastMessage.senderName}: {room.lastMessage.content}
-                        </p>
-                      )}
                     </div>
+                  ))}
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ) : filteredRooms.length === 0 ? (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center animate-in fade-in-50 duration-300">
+                  <div className="w-16 h-16 rounded-full bg-sidebar-muted/20 flex items-center justify-center mb-4 animate-in zoom-in-95 duration-500">
+                    <Users className="w-8 h-8 text-sidebar-muted-foreground/60" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-sidebar-foreground mb-1">
+                    {showUnreadOnly
+                      ? "No unread messages"
+                      : searchQuery
+                        ? "No conversations found"
+                        : "No conversations yet"}
+                  </h3>
+                  <p className="text-xs text-sidebar-muted-foreground max-w-[200px]">
+                    {showUnreadOnly
+                      ? "All caught up! Your conversations are up to date."
+                      : searchQuery
+                        ? "Try adjusting your search terms"
+                        : "Start a new conversation to get started"}
+                  </p>
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ) : (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {filteredRooms.map((room) => {
+                    const isActive = pathname === `/chat/${room.id}`;
+                    const displayName = getRoomDisplayName(room);
+                    const isOnline = isRoomOnline(room);
 
-                    {/* Unread badge - ONLY show if count > 0 */}
-                    {room.unreadCount && room.unreadCount > 0 ? (
-                      <Badge variant="destructive" className="min-w-[24px] h-6 px-1.5 rounded-full flex items-center justify-center flex-shrink-0 font-bold">
-                        {room.unreadCount > 99 ? "99+" : room.unreadCount}
-                      </Badge>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </div>
+                    return (
+                      <SidebarMenuItem key={room.id}>
+                        <SidebarMenuButton asChild isActive={isActive} size="lg">
+                          <Link href={`/chat/${room.id}`}>
+                            <div className="relative flex-shrink-0">
+                              <Avatar className={cn(
+                                "w-10 h-10",
+                                room.isGroup
+                                  ? "bg-gradient-to-br from-accent-400 to-pink-500"
+                                  : "bg-gradient-to-br from-primary to-accent"
+                              )}>
+                                <AvatarImage src={room.avatar || undefined} alt={displayName} />
+                                <AvatarFallback className={cn(
+                                  "text-white font-semibold",
+                                  room.isGroup
+                                    ? "bg-gradient-to-br from-accent-400 to-pink-500"
+                                    : "bg-gradient-to-br from-primary to-accent"
+                                )}>
+                                  {room.isGroup ? <Hash className="w-5 h-5" /> : getInitials(displayName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {isOnline && (
+                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-sidebar-background" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium truncate">
+                                  {displayName}
+                                </span>
+                                {room.lastMessage && (
+                                  <span className="text-xs text-sidebar-muted-foreground flex-shrink-0 ml-2">
+                                    {formatChatListTime(room.lastMessage.createdAt)}
+                                  </span>
+                                )}
+                              </div>
+                              {room.lastMessage && (
+                                <p className={cn(
+                                  "text-xs truncate",
+                                  room.unreadCount ? "text-sidebar-foreground font-medium" : "text-sidebar-muted-foreground"
+                                )}>
+                                  {room.lastMessage.senderName}: {room.lastMessage.content}
+                                </p>
+                              )}
+                            </div>
+                            {room.unreadCount && room.unreadCount > 0 && (
+                              <SidebarMenuBadge>
+                                {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                              </SidebarMenuBadge>
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           )}
-        </ScrollArea>
+        </SidebarContent>
 
-        {/* User Profile */}
-        <Separator />
-        <div className="p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Avatar className="w-10 h-10 bg-gradient-to-br from-primary-400 to-accent-500">
+        <SidebarFooter>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="relative flex-shrink-0">
+                <Avatar className="w-8 h-8 bg-gradient-to-br from-primary to-accent">
                   <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary-400 to-accent-500 text-white font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-semibold text-xs">
                     {getInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-surface-900" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-sidebar-background" />
               </div>
-              <div className="min-w-0">
-                <p className="font-medium text-sm text-surface-900 dark:text-white truncate flex items-center gap-1">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-xs text-sidebar-foreground truncate flex items-center gap-1">
                   {user.name}
                   {user.role === "ADMIN" && (
-                    <Shield className="w-3 h-3 text-red-500" />
+                    <Shield className="w-3 h-3 text-destructive flex-shrink-0" />
                   )}
                 </p>
                 <p className="text-xs text-green-500">Online</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {user.role === "ADMIN" && (
-                <Link
-                  href="/admin"
-                  className="w-9 h-9 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center text-red-500"
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
                   title="Admin Dashboard"
                 >
-                  <Shield className="w-5 h-5" />
-                </Link>
+                  <Link href="/admin">
+                    <Shield className="w-4 h-4 text-destructive" />
+                  </Link>
+                </Button>
               )}
-              <ThemeToggle className="w-9 h-9" />
-
-              <button
+              <ThemeToggle className="h-8 w-8" />
+              <Button
                 onClick={openSettingsModal}
-                className="w-9 h-9 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center justify-center text-surface-500"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
                 title="Settings"
               >
-                <Settings className="w-5 h-5" />
-              </button>
-              <button
+                <Settings className="w-4 h-4" />
+              </Button>
+              <Button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="w-9 h-9 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center text-surface-500 hover:text-red-500"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-sidebar-muted-foreground hover:text-destructive"
                 title="Sign out"
               >
-                <LogOut className="w-5 h-5" />
-              </button>
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
-            <Separator className="mt-4" />
           </div>
-        </div>
-      </aside>
+        </SidebarFooter>
+
+        <SidebarRail />
+      </Sidebar>
 
       {/* Create Room Modal */}
       <CreateRoomModal

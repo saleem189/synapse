@@ -35,6 +35,10 @@ export const metadata: Metadata = {
     description: "Connect and chat in real-time with ChatFlow",
     type: "website",
   },
+  // Permissions Policy for camera and microphone access (required for video/voice calls)
+  other: {
+    "Permissions-Policy": "camera=(self), microphone=(self), geolocation=()",
+  },
 };
 
 export default function RootLayout({
@@ -44,6 +48,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Permissions Policy for camera and microphone access (required for video/voice calls) */}
+        <meta
+          httpEquiv="Permissions-Policy"
+          content="camera=(self), microphone=(self), geolocation=()"
+        />
+      </head>
       <body
         className={`${outfit.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >

@@ -8,12 +8,22 @@ This file stores project-specific knowledge, conventions, and user preferences l
 
 ## User Preferences
 
-<!-- Add user preferences here -->
+*   **Date Format in Documentation:** Always use actual dates (e.g., "2025-12-10") in markdown files, never JavaScript code like `${new Date().toISOString().split('T')[0]}`. Get the current date from the system when creating documentation.
+*   **Code Modifications:** Never modify code automatically or push changes. Only make changes when explicitly instructed by the user.
+*   **Documentation Files:** Never create README files automatically. Only create them when explicitly requested.
+*   **Testing:** When creating feature or unit tests, use `DatabaseTransactions` instead of `RefreshDatabase`.
 
 ## Technical Decisions
 
-<!-- Add technical decisions here -->
+*   **WebRTC Library:** Using `simple-peer` for WebRTC video/audio calls. This was chosen for its simplicity, small bundle size, and compatibility with existing Socket.io infrastructure.
+*   **Database Persistence:** All call sessions must be persisted to the database. Call history, participants, and call duration should be saved for analytics and history tracking.
+*   **Feature Architecture:** New features should follow feature-based directory structure (e.g., `features/video-call/` with components, hooks, services subdirectories).
+*   **Database Migrations:** Use `prisma migrate dev` for local schema changes. Database schema changes should always be tracked via migrations.
 
 ## Project Conventions
 
-<!-- Add project conventions here -->
+*   **Date Handling:** Use centralized date formatting utilities. Be consistent with date serialization (ISO string vs Date object) across API boundaries.
+*   **Error Handling:** Gracefully handle database errors. If database operations fail, log errors but continue with in-memory operations when possible (e.g., call sessions).
+*   **Socket.io Events:** All Socket.io events should be properly typed in `lib/socket.ts` with both `ServerToClientEvents` and `ClientToServerEvents` interfaces.
+*   **Prisma Usage:** Always use Prisma client for database operations. Store database call session IDs in memory for reference during active calls.
+*   **Call Session Lifecycle:** Call sessions should be created in database when call starts, updated when participants join/leave, and marked as ENDED with duration when call ends.

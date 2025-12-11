@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { Hash, Users, MessageSquare, Trash2, Eye, Search } from "lucide-react";
 import { useSocket } from "@/hooks/use-socket";
 import { apiClient } from "@/lib/api-client";
+import { logger } from "@/lib/logger";
 import { cn, getInitials, formatMessageTime } from "@/lib/utils";
 import {
   Table,
@@ -115,22 +116,25 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
       setDeleteDialogOpen(false);
       setRoomToDelete(null);
     } catch (error) {
-      console.error("Failed to delete room:", error);
+      logger.error("Failed to delete room", error instanceof Error ? error : new Error(String(error)), {
+        component: 'RoomsTable',
+        roomId: roomToDelete,
+      });
     }
   };
 
   return (
-    <div className="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 overflow-hidden">
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
       {/* Search */}
-      <div className="p-4 border-b border-surface-200 dark:border-surface-800">
+      <div className="p-4 border-b border-border">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search rooms..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-surface-100 dark:bg-surface-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 transition-colors"
           />
         </div>
       </div>
@@ -140,25 +144,25 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Room
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Type
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Owner
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Members
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Messages
               </TableHead>
-              <TableHead className="text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-xs font-semibold text-muted-foreground uppercase">
                 Created
               </TableHead>
-              <TableHead className="text-right text-xs font-semibold text-surface-500 uppercase">
+              <TableHead className="text-right text-xs font-semibold text-muted-foreground uppercase">
                 Actions
               </TableHead>
             </TableRow>
@@ -167,7 +171,7 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
             {filteredRooms.map((room) => (
               <TableRow
                 key={room.id}
-                className="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors"
+                className="hover:bg-accent/50 transition-colors"
               >
                 {/* Room Info */}
                 <TableCell>
@@ -183,11 +187,11 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
                       {room.isGroup ? <Hash className="w-5 h-5" /> : getInitials(room.name)}
                     </div>
                     <div>
-                      <p className="font-medium text-surface-900 dark:text-white">
+                      <p className="font-medium text-foreground">
                         {room.name}
                       </p>
                       {room.description && (
-                        <p className="text-xs text-surface-500 truncate max-w-xs">
+                        <p className="text-xs text-muted-foreground truncate max-w-xs">
                           {room.description}
                         </p>
                       )}
@@ -212,21 +216,21 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
 
                 {/* Owner */}
                 <TableCell>
-                  <p className="text-sm text-surface-900 dark:text-white">
+                  <p className="text-sm text-foreground">
                     {room.owner.name}
                   </p>
-                  <p className="text-xs text-surface-500">{room.owner.email}</p>
+                  <p className="text-xs text-muted-foreground">{room.owner.email}</p>
                 </TableCell>
 
                 {/* Members */}
-                <TableCell className="text-surface-600 dark:text-surface-300">
+                <TableCell className="text-foreground">
                   {room._count.participants}
                 </TableCell>
 
                 {/* Messages */}
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="text-surface-600 dark:text-surface-300">
+                    <span className="text-foreground">
                       {room.totalMessages}
                     </span>
                     {room.liveMessageCount > 0 && (
@@ -238,7 +242,7 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
                 </TableCell>
 
                 {/* Created */}
-                <TableCell className="text-sm text-surface-500">
+                <TableCell className="text-sm text-muted-foreground">
                   {formatMessageTime(room.createdAt instanceof Date ? room.createdAt.toISOString() : room.createdAt)}
                 </TableCell>
 
@@ -247,14 +251,14 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
                   <div className="flex items-center justify-end gap-2">
                     <Link
                       href={`/admin/rooms/${room.id}`}
-                      className="w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center justify-center text-surface-500"
+                      className="w-8 h-8 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground transition-colors"
                       title="View details"
                     >
                       <Eye className="w-4 h-4" />
                     </Link>
                     <button
                       onClick={() => handleDeleteClick(room.id)}
-                      className="w-8 h-8 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center text-red-500"
+                      className="w-8 h-8 rounded-lg hover:bg-destructive/10 flex items-center justify-center text-destructive transition-colors"
                       title="Delete room"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -268,7 +272,7 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
       </div>
 
       {filteredRooms.length === 0 && (
-        <div className="p-8 text-center text-surface-500">
+        <div className="p-8 text-center text-muted-foreground">
           No rooms found
         </div>
       )}
@@ -286,7 +290,7 @@ export function RoomsTable({ initialRooms }: RoomsTableProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={deleteRoom}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-ring"
             >
               Delete
             </AlertDialogAction>

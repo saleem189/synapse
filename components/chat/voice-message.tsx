@@ -7,6 +7,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Play, Pause, Mic, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface VoiceMessageProps {
   audioUrl: string;
@@ -85,20 +86,20 @@ export function VoiceMessage({
       className={cn(
         "flex items-center gap-3 p-3 rounded-lg min-w-[200px] max-w-[300px]",
         isSent
-          ? "bg-primary-500/20 border border-primary-400/30"
-          : "bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700"
+          ? "bg-white/10 border border-white/20 backdrop-blur-sm"
+          : "bg-muted border border-border"
       )}
     >
       {/* Play/Pause Button */}
-      <button
+      <Button
         onClick={togglePlay}
         disabled={isLoading}
+        size="icon"
+        variant={isSent ? "ghost" : "outline"}
         className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 flex-shrink-0",
+          "w-10 h-10 rounded-full flex-shrink-0 transition-all duration-200",
           "hover:scale-110 active:scale-95",
-          isSent
-            ? "bg-primary-600 text-white hover:bg-primary-700"
-            : "bg-primary-600 text-white hover:bg-primary-700"
+          isSent && "bg-white/20 hover:bg-white/30 text-white border-white/30"
         )}
         title={isPlaying ? "Pause" : "Play"}
       >
@@ -109,20 +110,23 @@ export function VoiceMessage({
         ) : (
           <Play className="w-5 h-5 ml-0.5" />
         )}
-      </button>
+      </Button>
 
       {/* Waveform/Progress Bar */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Mic className={cn(
             "w-4 h-4 flex-shrink-0",
-            isSent ? "text-primary-400" : "text-surface-500"
+            isSent ? "text-white/90" : "text-muted-foreground"
           )} />
-          <div className="flex-1 h-2 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden">
+          <div className={cn(
+            "flex-1 h-2 rounded-full overflow-hidden",
+            isSent ? "bg-white/20" : "bg-muted"
+          )}>
             <div
               className={cn(
                 "h-full transition-all duration-100 rounded-full",
-                isSent ? "bg-primary-500" : "bg-primary-600"
+                isSent ? "bg-white/80" : "bg-primary"
               )}
               style={{ width: `${progress}%` }}
             />
@@ -131,12 +135,12 @@ export function VoiceMessage({
         <div className="flex items-center justify-between text-xs">
           <span className={cn(
             "font-medium",
-            isSent ? "text-primary-700 dark:text-primary-300" : "text-surface-600 dark:text-surface-400"
+            isSent ? "text-white/90" : "text-muted-foreground"
           )}>
             {formatTime(currentTime)}
           </span>
           <span className={cn(
-            isSent ? "text-primary-600 dark:text-primary-400" : "text-surface-500"
+            isSent ? "text-white/70" : "text-muted-foreground"
           )}>
             {formatTime(duration)}
           </span>

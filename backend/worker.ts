@@ -91,6 +91,11 @@ fileProcessingWorker.on('error', (err) => {
 });
 
 // Graceful shutdown
+// Increase max listeners to prevent warnings
+if (process.setMaxListeners) {
+  process.setMaxListeners(15);
+}
+
 const shutdown = async () => {
   logger.log('🛑 Worker: Shutting down gracefully...');
   await pushNotificationWorker.close();

@@ -5,7 +5,8 @@
 
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
-import prisma from "@/lib/prisma";
+import { getService } from "@/lib/di";
+import { AdminService } from "@/lib/services/admin.service";
 import { AdminStats } from "@/components/admin/admin-stats";
 import { RecentActivity } from "@/components/admin/recent-activity";
 import { OnlineUsers } from "@/components/admin/online-users";
@@ -28,42 +29,10 @@ const UserActivityLineChart = dynamic(
 );
 
 async function getStats() {
-  const [totalUsers, totalRooms, totalMessages, recentUsers] = await Promise.all([
-    prisma.user.count(),
-    prisma.chatRoom.count(),
-    prisma.message.count(),
-    prisma.user.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        status: true,
-        createdAt: true,
-      },
-    }),
-  ]);
-
-  // Get messages per day for last 7 days
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const messagesPerDay = await prisma.message.groupBy({
-    by: ["createdAt"],
-    where: {
-      createdAt: { gte: sevenDaysAgo },
-    },
-    _count: true,
-  });
-
-  return {
-    totalUsers,
-    totalRooms,
-    totalMessages,
-    recentUsers,
-    messagesPerDay,
-  };
+  // Use AdminService instead of direct Prisma access
+  const adminService = await getService<AdminService>('adminService');
+  const stats = await adminService.getStats();
+  return stats;
 }
 
 // ISR: Revalidate every 30 seconds for admin stats
