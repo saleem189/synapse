@@ -11,7 +11,7 @@ Development: http://localhost:3000/api
 
 ## Authentication
 
-ChatFlow uses NextAuth for authentication. Most API endpoints require authentication.
+Synapse uses NextAuth for authentication. Most API endpoints require authentication.
 
 See [Authentication Guide](./authentication.md) for details on:
 - Getting an authentication token
@@ -73,7 +73,7 @@ Retry-After: 30
 
 ## WebSocket API
 
-ChatFlow uses Socket.io for real-time communication.
+Synapse uses Socket.io for real-time communication.
 
 See [WebSocket Documentation](./websocket.md) for:
 - Connection setup

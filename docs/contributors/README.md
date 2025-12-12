@@ -1,6 +1,42 @@
 # Contributor Documentation
 
-Welcome to Synapse! This documentation helps you contribute code, fix bugs, and add features.
+Welcome to Synapse! **We're excited to have you contribute!** 🎉
+
+---
+
+## 🎨 We Need Your Help!
+
+**Synapse is actively seeking contributions, especially in:**
+
+### UI/UX Improvements (HIGH PRIORITY)
+
+The current interface is functional but could be **much better**! We're looking for contributors to help with:
+
+- ✨ **Modern, polished designs** - Better component styling, layouts, and visual hierarchy
+- 🎯 **User experience** - More intuitive flows, better onboarding, smoother interactions
+- 📱 **Responsive design** - Enhanced mobile and tablet experiences
+- ♿ **Accessibility** - ARIA labels, keyboard navigation, screen reader support
+- 🎭 **Animations** - Smooth transitions and delightful micro-interactions
+- 🌈 **Theming** - Custom themes, color schemes, and style options
+
+**See: [Frontend Architecture Guide](./frontend/README.md)** for details
+
+### New Features (ALWAYS WELCOME)
+
+Have an idea? We'd love to hear it! Some examples:
+- Message threading
+- Rich text formatting
+- Voice notes
+- Screen sharing
+- Custom themes
+- Keyboard shortcuts
+- Enhanced search
+
+**Open a discussion** on GitHub to share your ideas!
+
+### Bug Fixes & Code Improvements
+
+Browse [open issues](https://github.com/saleem189/synapse/issues) for bugs to fix or improvements to make.
 
 ---
 
@@ -9,8 +45,8 @@ Welcome to Synapse! This documentation helps you contribute code, fix bugs, and 
 **Start here:**
 
 1. **[Development Setup](./getting-started/setup.md)** - Set up your dev environment (15 min)
-2. **[Architecture Overview](../development/01-ARCHITECTURE-OVERVIEW.md)** - Understand the system (20 min)
-3. **[Dependency Injection](../development/02-DEPENDENCY-INJECTION.md)** - Learn service patterns (20 min)
+2. **[Frontend Architecture](./frontend/README.md)** - ⭐ Understand the frontend (20 min)
+3. **[Architecture Overview](../development/01-ARCHITECTURE-OVERVIEW.md)** - System design (20 min)
 4. **[Codebase Guide](../development/CODEBASE_GUIDE.md)** - What already exists (15 min)
 5. **[First Contribution](./getting-started/first-contribution.md)** - Make your first PR (30 min)
 
@@ -22,7 +58,9 @@ Welcome to Synapse! This documentation helps you contribute code, fix bugs, and 
 
 | Task | Documentation |
 |------|---------------|
-| Understand architecture | [01-ARCHITECTURE-OVERVIEW.md](../development/01-ARCHITECTURE-OVERVIEW.md) |
+| **Improve UI/UX** | **[Frontend Architecture](./frontend/README.md)** ⭐ |
+| Add new features | [Frontend Architecture](./frontend/README.md) |
+| Understand backend | [01-ARCHITECTURE-OVERVIEW.md](../development/01-ARCHITECTURE-OVERVIEW.md) |
 | Use DI container | [02-DEPENDENCY-INJECTION.md](../development/02-DEPENDENCY-INJECTION.md) |
 | Add Socket.io events | [03-SOCKET-IO-AND-WEBRTC.md](../development/03-SOCKET-IO-AND-WEBRTC.md) |
 | Create background jobs | [04-QUEUE-SYSTEM.md](../development/04-QUEUE-SYSTEM.md) |
@@ -32,37 +70,47 @@ Welcome to Synapse! This documentation helps you contribute code, fix bugs, and 
 
 ## Architecture Deep Dive
 
-### Essential Reading
+### Frontend (START HERE for UI/UX)
 
-1. **[01 - Architecture Overview](../development/01-ARCHITECTURE-OVERVIEW.md)** (20 min)
+1. **[Frontend Architecture](./frontend/README.md)** ⭐ (20 min)
+   - Next.js 16 + React 19 architecture
+   - Component structure & feature patterns
+   - Theme system (Light/Dark + Solid/Glassmorphic)
+   - State management (React Query, Zustand)
+   - How to add new features
+   - **UI/UX contribution guidelines**
+
+### Backend (Essential Reading)
+
+2. **[01 - Architecture Overview](../development/01-ARCHITECTURE-OVERVIEW.md)** (20 min)
    - System overview, tech stack, design patterns
    - Data flow examples
    - Quick start for developers
 
-2. **[02 - Dependency Injection](../development/02-DEPENDENCY-INJECTION.md)** (20 min)
+3. **[02 - Dependency Injection](../development/02-DEPENDENCY-INJECTION.md)** (20 min)
    - DI container, 15+ registered services
    - Creating new services
    - Testing with DI
 
-3. **[Codebase Guide](../development/CODEBASE_GUIDE.md)** (15 min)
+4. **[Codebase Guide](../development/CODEBASE_GUIDE.md)** (15 min)
    - Existing services (don't recreate!)
    - API route patterns
    - Socket.io memory management
 
 ### Deep Dives
 
-4. **[03 - Socket.io & WebRTC](../development/03-SOCKET-IO-AND-WEBRTC.md)** (30 min)
+5. **[03 - Socket.io & WebRTC](../development/03-SOCKET-IO-AND-WEBRTC.md)** (30 min)
    - Real-time communication
    - **CRITICAL:** Memory leak prevention
    - WebRTC implementation
 
-5. **[04 - Queue System](../development/04-QUEUE-SYSTEM.md)** (25 min)
+6. **[04 - Queue System](../development/04-QUEUE-SYSTEM.md)** (25 min)
    - Background jobs with BullMQ
    - Creating job processors
    - Monitoring queues
 
-6. **[Complete Developer Guide](../development/COMPLETE-DEVELOPER-GUIDE.md)** (30 min)
-   - Notifications, frontend, themes
+7. **[Complete Developer Guide](../development/COMPLETE-DEVELOPER-GUIDE.md)** (30 min)
+   - Notifications, frontend patterns, themes
    - Memory management, API patterns
    - Quick reference
 
@@ -251,8 +299,41 @@ See: [CONTRIBUTING.md](../../CONTRIBUTING.md#pull-request-process)
 ## Community
 
 - **GitHub Issues** - Report bugs or suggest features
-- **GitHub Discussions** - Ask questions
-- **Pull Requests** - Contribute code
+- **GitHub Discussions** - Ask questions, share ideas
+- **Pull Requests** - Contribute code, designs, documentation
+
+---
+
+## 💡 Contribution Ideas
+
+Not sure where to start? Here are some ideas:
+
+### UI/UX Improvements
+- Redesign the chat interface
+- Improve the onboarding flow
+- Create better empty states
+- Add loading skeletons
+- Enhance mobile responsiveness
+- Improve accessibility
+
+### Features
+- Add message threading
+- Implement rich text editing
+- Create custom emoji reactions
+- Add voice messages
+- Build screen sharing
+- Create keyboard shortcuts
+
+### Bug Fixes
+- Browse [open issues](https://github.com/saleem189/synapse/issues)
+- Look for "good first issue" label
+- Fix reported bugs
+
+### Documentation
+- Improve existing docs
+- Add code examples
+- Create tutorials
+- Add screenshots/videos
 
 ---
 
@@ -260,20 +341,27 @@ See: [CONTRIBUTING.md](../../CONTRIBUTING.md#pull-request-process)
 
 **For new contributors:**
 
-1. Set up development environment
-2. Read architecture documentation
-3. Find a "good first issue"
+1. ⭐ **Read [Frontend Architecture](./frontend/README.md)** - Understand the UI (20 min)
+2. Set up development environment - [Setup Guide](./getting-started/setup.md)
+3. Find a "good first issue" or propose a UI improvement
 4. Make your first contribution!
 
 **For experienced contributors:**
 
-- Check [open issues](https://github.com/saleem189/synapse/issues)
+- Check [open issues](https://github.com/saleem189/synapse/issues) for high-priority items
+- Propose new features in [discussions](https://github.com/saleem189/synapse/discussions)
 - Review [roadmap](https://github.com/saleem189/synapse/projects)
-- Join discussions
 
 ---
 
-## Questions?
+## Questions or Ideas?
 
-Open a discussion or issue on GitHub, and the community will help!
+**We'd love to hear from you!**
+
+- 💬 Open a [discussion](https://github.com/saleem189/synapse/discussions) to share ideas
+- 🐛 Open an [issue](https://github.com/saleem189/synapse/issues) to report bugs
+- 🎨 Share design mockups or UI improvements
+- 📖 Suggest documentation improvements
+
+**Every contribution makes Synapse better!** 🚀
 

@@ -3,7 +3,7 @@
 // ================================
 // This file configures Sentry for the server-side (API routes, server components)
 // Official Docs: https://docs.sentry.io/platforms/javascript/guides/nextjs/
-// Setup Guide: https://chatflow.sentry.io/onboarding/setup-docs/
+// Setup Guide: https://synapse.sentry.io/onboarding/setup-docs/
 
 import * as Sentry from "@sentry/nextjs";
 

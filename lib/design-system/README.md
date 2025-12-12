@@ -6,7 +6,7 @@
 
 ## Overview
 
-The ChatFlow design system provides a **two-dimensional theming system** that separates:
+The Synapse design system provides a **two-dimensional theming system** that separates:
 - **Theme** (Light/Dark/System) - Controls colors
 - **Style** (Solid/Glassmorphic) - Controls visual effects
 

@@ -39,7 +39,7 @@ export function RecentActivity({ recentUsers }: RecentActivityProps) {
       id: user.id,
       type: "user_joined" as const,
       user: user.name,
-      content: "joined ChatFlow",
+      content: "joined Synapse",
       time: new Date(user.createdAt).toISOString(),
     }));
     setActivities(userActivities);

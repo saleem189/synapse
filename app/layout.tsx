@@ -25,14 +25,14 @@ const jetbrainsMono = JetBrains_Mono({
 
 // Metadata for SEO
 export const metadata: Metadata = {
-  title: "ChatFlow - Real-time Chat Application",
+  title: "Synapse - Real-time Chat Application",
   description:
     "A modern, real-time chat application built with Next.js, Socket.io, and MongoDB",
   keywords: ["chat", "messaging", "real-time", "nextjs", "socket.io"],
-  authors: [{ name: "ChatFlow Team" }],
+  authors: [{ name: "Synapse Team" }],
   openGraph: {
-    title: "ChatFlow - Real-time Chat Application",
-    description: "Connect and chat in real-time with ChatFlow",
+    title: "Synapse - Real-time Chat Application",
+    description: "Connect and chat in real-time with Synapse",
     type: "website",
   },
   // Permissions Policy for camera and microphone access (required for video/voice calls)

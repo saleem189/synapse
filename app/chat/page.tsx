@@ -26,7 +26,7 @@ export default async function ChatHomePage() {
 
         {/* Title */}
         <h2 className="text-2xl font-bold text-foreground mb-3">
-          Welcome to ChatFlow
+          Welcome to Synapse
         </h2>
 
         {/* Description */}

@@ -63,13 +63,20 @@ Learn how to use Synapse, integrate it into your applications, and deploy it to 
 
 Learn the architecture, understand existing code, and contribute effectively.
 
+#### 🎨 UI/UX Contributions (HIGH PRIORITY!)
+- **[Frontend Architecture](./contributors/frontend/README.md)** ⭐ **START HERE** (20 min)
+  - Next.js 16 + React 19 architecture
+  - Theme system & component structure
+  - How to add new features
+  - UI/UX improvement guidelines
+
 #### Getting Started
 - **[Development Setup](./contributors/getting-started/setup.md)** (15 min)
 - **[First Contribution](./contributors/getting-started/first-contribution.md)** (30 min)
 - **[Contributing Guide](../CONTRIBUTING.md)**
 
-#### Architecture (Essential Reading)
-- **[01 - Architecture Overview](./development/01-ARCHITECTURE-OVERVIEW.md)** ⭐ START HERE (20 min)
+#### Backend Architecture
+- **[01 - Architecture Overview](./development/01-ARCHITECTURE-OVERVIEW.md)** (20 min)
 - **[02 - Dependency Injection](./development/02-DEPENDENCY-INJECTION.md)** (20 min)
 - **[Codebase Guide](./development/CODEBASE_GUIDE.md)** (15 min)
 

@@ -150,7 +150,7 @@ export default function RegisterPage() {
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold text-surface-900 dark:text-white">
-            ChatFlow
+            Synapse
           </span>
         </Link>
         <ThemeToggle />
@@ -164,7 +164,7 @@ export default function RegisterPage() {
             <CardHeader className="text-center pb-6">
               <CardTitle className="text-2xl mb-2">Create Account</CardTitle>
               <CardDescription className="text-base">
-                Join ChatFlow and start chatting
+                Join Synapse and start chatting
               </CardDescription>
             </CardHeader>
             <CardContent className="px-8 pb-8">

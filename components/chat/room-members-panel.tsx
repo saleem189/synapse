@@ -192,7 +192,7 @@ export function RoomMembersPanel({
                           )}
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          {participant.email || "ChatFlow User"}
+                          {participant.email || "Synapse User"}
                         </p>
                         <div className="flex items-center gap-2 pt-2">
                           <span className={`text-xs px-2 py-1 rounded-full ${
@@ -273,7 +273,7 @@ export function RoomMembersPanel({
                       <div className="space-y-1 flex-1">
                         <h4 className="text-sm font-semibold">{participant.name}</h4>
                         <p className="text-xs text-muted-foreground">
-                          {participant.email || "ChatFlow User"}
+                          {participant.email || "Synapse User"}
                         </p>
                         <div className="flex items-center pt-2">
                           <span className={`text-xs px-2 py-1 rounded-full ${

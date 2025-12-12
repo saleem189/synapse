@@ -240,7 +240,7 @@ function LoginForm() {
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold text-surface-900 dark:text-white">
-            ChatFlow
+            Synapse
           </span>
         </Link>
         <ThemeToggle />
@@ -336,7 +336,7 @@ function LoginForm() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-4 bg-white dark:bg-surface-900 text-surface-500">
-                  New to ChatFlow?
+                  New to Synapse?
                 </span>
               </div>
             </div>

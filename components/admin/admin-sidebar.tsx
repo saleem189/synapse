@@ -52,7 +52,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           </div>
           <div>
             <h1 className="font-bold text-lg">Admin Panel</h1>
-            <p className="text-xs text-muted-foreground">ChatFlow Management</p>
+            <p className="text-xs text-muted-foreground">Synapse Management</p>
           </div>
         </div>
       </div>

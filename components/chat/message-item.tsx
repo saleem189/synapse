@@ -107,7 +107,7 @@ export const MessageItem = memo(function MessageItem({
                   <div className="space-y-1 flex-1">
                     <h4 className="text-sm font-semibold">{message.senderName}</h4>
                     <p className="text-xs text-muted-foreground">
-                      ChatFlow User
+                      Synapse User
                     </p>
                     <div className="flex items-center pt-2">
                       <span className="text-xs text-muted-foreground">

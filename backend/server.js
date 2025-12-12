@@ -1286,7 +1286,7 @@ async function startServer() {
   httpServer.listen(PORT, () => {
     logger.log(`
 ╔════════════════════════════════════════╗
-║  🚀 ChatFlow Socket Server             ║
+║  🚀 Synapse Socket Server              ║
 ║  Running on http://localhost:${PORT}      ║
 ║  CORS Origins: ${CORS_ORIGINS.join(', ')}
 ║  Environment: ${NODE_ENV}

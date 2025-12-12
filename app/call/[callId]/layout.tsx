@@ -6,7 +6,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Video Call - ChatFlow",
+  title: "Video Call - Synapse",
   description: "Join your video call",
 };
 

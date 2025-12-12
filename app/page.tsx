@@ -60,7 +60,7 @@ export default async function LandingPage() {
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold text-surface-900 dark:text-white">
-            ChatFlow
+            Synapse
           </span>
         </div>
 
@@ -164,7 +164,7 @@ export default async function LandingPage() {
       <footer className="relative z-10 border-t border-surface-200 dark:border-surface-800 py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-surface-500 dark:text-surface-400 text-sm">
-            © 2024 ChatFlow. Built with Next.js & Socket.io
+            © 2024 Synapse. Built with Next.js & Socket.io
           </p>
           <div className="flex items-center gap-6 text-sm text-surface-500 dark:text-surface-400">
             <a href="#" className="hover:text-primary-500 transition-colors">
@@ -218,7 +218,7 @@ function ChatPreview() {
     {
       id: 1,
       sender: "Alice",
-      content: "Hey! Have you tried the new ChatFlow app? 🚀",
+      content: "Hey! Have you tried the new Synapse app? 🚀",
       time: "10:30 AM",
       isSent: false,
     },
