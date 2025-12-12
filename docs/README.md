@@ -20,9 +20,23 @@ A synapse is the junction where neurons transmit signals, enabling rapid communi
 - **[Features](./features/README.md)** - Complete feature documentation
 
 ### For Developers
-- **[⭐ Codebase Guide](./development/CODEBASE_GUIDE.md)** - **START HERE!** Existing services, DI, patterns
+
+**📖 Learning Path (Read in Order):**
+
+1. **[⭐ 01 - Architecture Overview](./development/01-ARCHITECTURE-OVERVIEW.md)** - **START HERE!** System overview, tech stack, design patterns
+2. **[02 - Dependency Injection](./development/02-DEPENDENCY-INJECTION.md)** - DI container, service management, testing
+3. **[Codebase Guide](./development/CODEBASE_GUIDE.md)** - Existing services (15+), API patterns, Socket.io memory management
+4. **[Complete Developer Guide](./development/COMPLETE-DEVELOPER-GUIDE.md)** - Comprehensive reference (notifications, frontend, themes, memory, APIs)
+
+**🔍 Deep Dive Topics:**
+
+5. **[03 - Socket.io & WebRTC](./development/03-SOCKET-IO-AND-WEBRTC.md)** - Real-time communication, video/audio calls
+6. **[04 - Queue System](./development/04-QUEUE-SYSTEM.md)** - Background jobs, BullMQ, job processing
+
+**📚 Additional Resources:**
+
+- **[Architecture (Legacy)](./development/architecture.md)** - Original architecture documentation
 - **[Getting Started](./development/getting-started.md)** - Set up your development environment
-- **[Architecture](./development/architecture.md)** - System architecture and design decisions
 - **[API Reference](./api/README.md)** - Complete API documentation
 - **[Database Schema](./development/database.md)** - Database design and relationships
 
@@ -43,10 +57,12 @@ A synapse is the junction where neurons transmit signals, enabling rapid communi
 - **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute
 
 ### For Developers
-- **[Installation](./development/getting-started.md#installation)**
+- **[⭐ Start Here - Architecture](./development/01-ARCHITECTURE-OVERVIEW.md)** - Understand the system first
 - **[Existing Services](./development/CODEBASE_GUIDE.md#existing-services-reference)** - Don't recreate what exists!
-- **[API Patterns](./development/CODEBASE_GUIDE.md#api-route-pattern)** - Standard route structure
-- **[Socket.io Patterns](./development/CODEBASE_GUIDE.md#socketio-implementation)** - Memory leak prevention
+- **[API Patterns](./development/COMPLETE-DEVELOPER-GUIDE.md#api-patterns)** - Standard route structure
+- **[Socket.io Patterns](./development/03-SOCKET-IO-AND-WEBRTC.md#memory-management)** - Memory leak prevention
+- **[Queue System](./development/04-QUEUE-SYSTEM.md)** - Background jobs
+- **[Complete Reference](./development/COMPLETE-DEVELOPER-GUIDE.md)** - All-in-one guide
 
 ### For Integrators
 - **[API Authentication](./api/authentication.md)**
