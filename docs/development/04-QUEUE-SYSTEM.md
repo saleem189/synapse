@@ -78,7 +78,7 @@ graph TB
     subgraph NextJS["Next.js Application"]
         API["API Routes / Services<br/><br/>queueService.addPushNotification()<br/>queueService.addImageProcessing()<br/>queueService.addVideoProcessing()"]
         QService["QueueService<br/>(lib/queue/queue-service.ts)<br/><br/>• Manages queue operations<br/>• Type-safe job addition<br/>• Handles retries & failures"]
-        API -->|Add job<br/>(fast, non-blocking)| QService
+        API -->|Add job - fast, non-blocking| QService
     end
     
     subgraph Redis["Redis (Job Storage)"]
@@ -92,8 +92,8 @@ graph TB
     end
     
     QService --> Redis
-    PushQueue -->|Worker polls<br/>for jobs| PushWorker
-    FileQueue -->|Worker polls<br/>for jobs| FileWorker
+    PushQueue -->|Worker polls for jobs| PushWorker
+    FileQueue -->|Worker polls for jobs| FileWorker
     
     style NextJS fill:#e1f5ff
     style Redis fill:#fff4e1
