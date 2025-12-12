@@ -98,14 +98,6 @@ graph TB
     style NextJS fill:#e1f5ff
     style Redis fill:#fff4e1
     style Worker fill:#e8f5e9
-│  │  • Auto-retry: 2 attempts                                 │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                           │
-                           │ (Process & complete)
-                           ▼
-                    Job Completed ✅
-                  (or Failed after retries ❌)
 ```
 
 ---
