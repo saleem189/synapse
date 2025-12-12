@@ -9,6 +9,17 @@
 
 ---
 
+## 🧠 About the Name
+
+**Synapse** *(Greek origin)*
+
+- **Pronunciation:** SIN-aps
+- **Meaning:** Connection between signals — perfect for communication
+
+In neuroscience, a synapse is the junction where neurons transmit signals to each other, enabling rapid communication across the nervous system. Similarly, our Synapse application creates seamless connections between people, enabling instant, real-time communication through messages, calls, and shared experiences.
+
+---
+
 ## ✨ Features
 
 - 💬 **Real-time Messaging** - Instant chat with Socket.io

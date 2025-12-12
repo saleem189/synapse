@@ -2,10 +2,21 @@
 
 Welcome to the Synapse documentation! This documentation is designed to help developers, contributors, and users understand and work with Synapse.
 
+## 🧠 About Synapse
+
+**Synapse** *(Greek origin)*
+
+- **Pronunciation:** SIN-aps
+- **Meaning:** Connection between signals — perfect for communication
+
+A synapse is the junction where neurons transmit signals, enabling rapid communication. Our application creates seamless connections between people for instant, real-time communication.
+
+---
+
 ## 📚 Documentation Structure
 
 ### For Users
-- **[User Guide](./user-guide/README.md)** - How to use ChatFlow
+- **[User Guide](./user-guide/README.md)** - How to use Synapse
 - **[Features](./features/README.md)** - Complete feature documentation
 
 ### For Developers
@@ -16,12 +27,12 @@ Welcome to the Synapse documentation! This documentation is designed to help dev
 - **[Database Schema](./development/database.md)** - Database design and relationships
 
 ### For Contributors
-- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute to ChatFlow
+- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute to Synapse
 - **[Code Style Guide](./development/code-style.md)** - Coding standards and best practices
 - **[Testing Guide](./development/testing.md)** - Writing and running tests
 
 ### Deployment
-- **[Deployment Guide](./deployment/README.md)** - How to deploy ChatFlow
+- **[Deployment Guide](./deployment/README.md)** - How to deploy Synapse
 - **[Configuration](./deployment/configuration.md)** - Environment variables and configuration options
 - **[Troubleshooting](./deployment/troubleshooting.md)** - Common issues and solutions
 
