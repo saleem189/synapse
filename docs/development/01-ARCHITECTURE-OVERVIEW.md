@@ -95,7 +95,6 @@ graph TB
     
     Browser -->|HTTP/HTTPS| API
     SocketClient -->|WebSocket| SocketServer
-    WebRTC -.->|P2P - UDP/TCP| WebRTC
     
     API --> DI
     DI --> Repos
@@ -111,6 +110,8 @@ graph TB
     style Data fill:#e8f5e9
     style NextJS fill:#f0f4ff
 ```
+
+**Note:** WebRTC enables peer-to-peer video/audio calls. Media streams flow directly between users (not through our servers) using STUN/TURN for NAT traversal.
 
 ---
 

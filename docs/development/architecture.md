@@ -49,7 +49,6 @@ graph TB
     
     UI -->|HTTP/REST| NextJS
     WS -->|Socket.io| Socket
-    RTC -.->|STUN/TURN| RTC
     
     NextJS -->|Prisma ORM| Postgres
     NextJS --> Redis
@@ -62,6 +61,8 @@ graph TB
     style App fill:#fff4e1
     style Data fill:#e8f5e9
 ```
+
+**Note:** WebRTC connections are peer-to-peer (P2P) and use STUN/TURN servers for NAT traversal. Media flows directly between clients, not through our servers.
 
 ---
 
