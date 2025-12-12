@@ -53,8 +53,13 @@ next-env.d.ts
 *.pid
 *.seed
 
-# Documentation
-# *.md
+# Audit Reports and Summary Files
+AUDIT_REPORTS/
+
+# Root-level markdown files (except README.md and CONTRIBUTING.md)
+/*.md
+!README.md
+!CONTRIBUTING.md
 
 # Uploaded files
 public/uploads/*
