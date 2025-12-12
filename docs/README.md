@@ -1,111 +1,184 @@
 # Synapse Documentation
 
-Welcome to the Synapse documentation! This documentation is designed to help developers, contributors, and users understand and work with Synapse.
+**Real-time chat and video calling for modern applications**
+
+---
 
 ## 🧠 About Synapse
 
-**Synapse** *(Greek origin)*
+**Synapse** *(Greek origin)* - **Pronunciation:** SIN-aps - **Meaning:** Connection between signals
 
-- **Pronunciation:** SIN-aps
-- **Meaning:** Connection between signals — perfect for communication
-
-A synapse is the junction where neurons transmit signals, enabling rapid communication. Our application creates seamless connections between people for instant, real-time communication.
+A synapse is the junction where neurons transmit signals, enabling rapid communication. Synapse creates seamless connections between people for instant, real-time communication through messages, calls, and file sharing.
 
 ---
 
-## 📚 Documentation Structure
+## Choose Your Path
 
-### For Users
-- **[User Guide](./user-guide/README.md)** - How to use Synapse
-- **[Features](./features/README.md)** - Complete feature documentation
+<table>
+<tr>
+<td width="50%" valign="top">
 
-### For Developers
+### 📘 Product Documentation
 
-**📖 Learning Path (Read in Order):**
+**For users, integrators, and API consumers**
 
-1. **[⭐ 01 - Architecture Overview](./development/01-ARCHITECTURE-OVERVIEW.md)** - **START HERE!** System overview, tech stack, design patterns
-2. **[02 - Dependency Injection](./development/02-DEPENDENCY-INJECTION.md)** - DI container, service management, testing
-3. **[Codebase Guide](./development/CODEBASE_GUIDE.md)** - Existing services (15+), API patterns, Socket.io memory management
-4. **[Complete Developer Guide](./development/COMPLETE-DEVELOPER-GUIDE.md)** - Comprehensive reference (notifications, frontend, themes, memory, APIs)
+Learn how to use Synapse, integrate it into your applications, and deploy it to production.
 
-**🔍 Deep Dive Topics:**
+#### Quick Start
+- **[5-Minute Quickstart](./product/getting-started/quickstart.md)**
+- **[Authentication Guide](./product/getting-started/authentication.md)**
+- **[Send First Message](./product/guides/send-first-message.md)**
 
-5. **[03 - Socket.io & WebRTC](./development/03-SOCKET-IO-AND-WEBRTC.md)** - Real-time communication, video/audio calls
-6. **[04 - Queue System](./development/04-QUEUE-SYSTEM.md)** - Background jobs, BullMQ, job processing
+#### Core Concepts
+- **[Rooms & Members](./product/concepts/rooms.md)**
+- **[Messages](./product/concepts/messages.md)**
+- **[Real-time Events](./product/concepts/realtime.md)**
+- **[Video Calls](./product/concepts/video-calls.md)**
+- **[Notifications](./product/concepts/notifications.md)**
 
-**📚 Additional Resources:**
+#### Guides
+- **[Send Messages](./product/guides/send-first-message.md)**
+- **[Start Video Calls](./product/guides/start-video-call.md)**
+- **[Real-time Updates](./product/guides/realtime-events.md)**
+- **[Upload Files](./product/guides/upload-files.md)**
 
-- **[Architecture (Legacy)](./development/architecture.md)** - Original architecture documentation
-- **[Getting Started](./development/getting-started.md)** - Set up your development environment
-- **[API Reference](./api/README.md)** - Complete API documentation
-- **[Database Schema](./development/database.md)** - Database design and relationships
+#### API Reference
+- **[REST API](./product/api-reference/README.md)**
+- **[WebSocket Events](./product/api-reference/websocket/README.md)**
+- **[Errors & Rate Limits](./product/api-reference/errors.md)**
 
-### For Contributors
-- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute to Synapse
-- **[Code Style Guide](./development/code-style.md)** - Coding standards and best practices
-- **[Testing Guide](./development/testing.md)** - Writing and running tests
+#### Deployment
+- **[Self-Hosting Guide](./product/deployment/self-hosting.md)**
+- **[Docker Setup](./product/deployment/docker.md)**
+- **[Production Checklist](./product/deployment/production.md)**
 
-### Deployment
-- **[Deployment Guide](./deployment/README.md)** - How to deploy Synapse
-- **[Configuration](./deployment/configuration.md)** - Environment variables and configuration options
-- **[Troubleshooting](./deployment/troubleshooting.md)** - Common issues and solutions
+**[→ Browse Product Docs](./product/README.md)**
 
-## 🚀 Quick Links
+</td>
+<td width="50%" valign="top">
 
-### For Contributors
-- **[⭐ Codebase Guide](./development/CODEBASE_GUIDE.md)** - Before adding code, read this!
-- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute
+### 🛠️ Contributor Documentation
 
-### For Developers
-- **[⭐ Start Here - Architecture](./development/01-ARCHITECTURE-OVERVIEW.md)** - Understand the system first
-- **[Existing Services](./development/CODEBASE_GUIDE.md#existing-services-reference)** - Don't recreate what exists!
-- **[API Patterns](./development/COMPLETE-DEVELOPER-GUIDE.md#api-patterns)** - Standard route structure
-- **[Socket.io Patterns](./development/03-SOCKET-IO-AND-WEBRTC.md#memory-management)** - Memory leak prevention
-- **[Queue System](./development/04-QUEUE-SYSTEM.md)** - Background jobs
-- **[Complete Reference](./development/COMPLETE-DEVELOPER-GUIDE.md)** - All-in-one guide
+**For developers adding features and fixing bugs**
 
-### For Integrators
-- **[API Authentication](./api/authentication.md)**
-- **[WebSocket Events](./api/websocket.md)**
-- **[Video Call Integration](./features/video-calls.md)**
-- **[Performance Monitoring](./development/performance.md)**
+Learn the architecture, understand existing code, and contribute effectively.
 
-## 📖 Additional Resources
+#### Getting Started
+- **[Development Setup](./contributors/getting-started/setup.md)** (15 min)
+- **[First Contribution](./contributors/getting-started/first-contribution.md)** (30 min)
+- **[Contributing Guide](../CONTRIBUTING.md)**
 
-- **[Changelog](../CHANGELOG.md)** - Version history and release notes
-- **[Deprecation Notes](../DEPRECATION_NOTES.md)** - Deprecated features and migration guides
-- **[FAQ](./faq.md)** - Frequently asked questions
-- **[Glossary](./glossary.md)** - Technical terms and definitions
+#### Architecture (Essential Reading)
+- **[01 - Architecture Overview](./development/01-ARCHITECTURE-OVERVIEW.md)** ⭐ START HERE (20 min)
+- **[02 - Dependency Injection](./development/02-DEPENDENCY-INJECTION.md)** (20 min)
+- **[Codebase Guide](./development/CODEBASE_GUIDE.md)** (15 min)
+
+#### Deep Dives
+- **[03 - Socket.io & WebRTC](./development/03-SOCKET-IO-AND-WEBRTC.md)** (30 min)
+  - ⚠️ CRITICAL: Memory leak prevention
+- **[04 - Queue System](./development/04-QUEUE-SYSTEM.md)** (25 min)
+- **[Complete Developer Guide](./development/COMPLETE-DEVELOPER-GUIDE.md)** (30 min)
+  - Notifications, frontend, themes, API patterns
+
+#### Common Tasks
+- **[Add a Service](./development/02-DEPENDENCY-INJECTION.md#creating-new-services)**
+- **[Add API Endpoint](./development/COMPLETE-DEVELOPER-GUIDE.md#api-patterns)**
+- **[Add Socket.io Event](./development/03-SOCKET-IO-AND-WEBRTC.md#adding-new-events)**
+- **[Add Background Job](./development/04-QUEUE-SYSTEM.md#creating-new-job-types)**
+
+#### Before You Code
+- ✅ Read [Architecture Overview](./development/01-ARCHITECTURE-OVERVIEW.md)
+- ✅ Check [Codebase Guide](./development/CODEBASE_GUIDE.md) (don't recreate existing functionality!)
+- ✅ Review [Coding Standards](../CONTRIBUTING.md#coding-standards)
+
+**[→ Browse Contributor Docs](./contributors/README.md)**
+
+</td>
+</tr>
+</table>
+
+---
+
+## Popular Pages
+
+| Task | Documentation |
+|------|---------------|
+| **Run Synapse locally** | [Quickstart](./product/getting-started/quickstart.md) |
+| **Make first API call** | [Authentication](./product/getting-started/authentication.md) |
+| **Send messages** | [Send Messages Guide](./product/guides/send-first-message.md) |
+| **Start video call** | [Video Call Guide](./product/guides/start-video-call.md) |
+| **Set up dev environment** | [Development Setup](./contributors/getting-started/setup.md) |
+| **Understand architecture** | [Architecture Overview](./development/01-ARCHITECTURE-OVERVIEW.md) |
+| **Use DI container** | [Dependency Injection](./development/02-DEPENDENCY-INJECTION.md) |
+| **Make first contribution** | [First Contribution](./contributors/getting-started/first-contribution.md) |
+
+---
+
+## Documentation Statistics
+
+### Product Documentation (15 pages)
+- ✅ Getting Started (Quickstart, Authentication)
+- ✅ Practical Guides (Messages, Video Calls, Real-time, Files)
+- ✅ Core Concepts (Rooms, Messages, Real-time, Video, Notifications)
+- ✅ API Reference (REST & WebSocket)
+- ✅ Deployment (Self-hosting, Docker, Production)
+
+### Contributor Documentation (8 pages)
+- ✅ Getting Started (Setup, First Contribution)
+- ✅ Architecture Deep Dives (5 comprehensive guides)
+- ✅ Developer Guide (Complete reference)
+
+**Total:** 23 pages + existing legacy docs
+
+---
+
+## What's New
+
+**December 12, 2025:**
+- ✨ New Stripe/OpenAI-style product documentation
+- ✨ Reorganized contributor documentation
+- ✨ Clear separation: Product users vs Contributors
+- ✨ Short, focused pages (5-15 min reads)
+- ✨ Multi-language code examples
+- ✨ Copy/paste working code snippets
+
+---
+
+## Documentation Approach
+
+**Product Docs:**
+- Short pages (5-15 min read)
+- Copy/paste examples that work
+- Multi-language (curl, JavaScript, Python)
+- Consistent structure (What → How → Troubleshoot)
+- Minimal emojis (professional)
+
+**Contributor Docs:**
+- Comprehensive technical depth
+- Real code from codebase
+- Visual diagrams
+- DO/DON'T patterns
+- Troubleshooting sections
+
+---
 
 ## 🤝 Getting Help
 
-- **GitHub Issues:** Report bugs or request features
-- **GitHub Discussions:** Ask questions and share ideas
-- **Discord:** Join our community server (link in main README)
-
-## 📝 Documentation Updates
-
-This documentation is continuously updated. Last major update: 2025-12-12
-
-To contribute to documentation:
-1. Follow the [Contributing Guide](../CONTRIBUTING.md)
-2. Use clear, concise language
-3. Include code examples
-4. Add screenshots for UI features
+- **[GitHub Issues](https://github.com/saleem189/synapse/issues)** - Report bugs or request features
+- **[GitHub Discussions](https://github.com/saleem189/synapse/discussions)** - Ask questions
+- **Pull Requests** - Contribute code or documentation
 
 ---
 
-**Table of Contents:**
+## 📝 Contributing to Docs
 
-1. [User Guide](./user-guide/README.md)
-2. [Features Documentation](./features/README.md)
-3. [Development Guide](./development/README.md)
-4. [API Reference](./api/README.md)
-5. [Deployment Guide](./deployment/README.md)
-6. [Performance & Monitoring](./development/performance.md)
-7. [Security Best Practices](./development/security.md)
+Documentation improvements are always welcome!
+
+**Product Docs:** Follow Stripe/OpenAI style (short, examples-first)  
+**Contributor Docs:** Be thorough, include code snippets, add troubleshooting
+
+See: [Contributing Guide](../CONTRIBUTING.md)
 
 ---
 
-Made with ❤️ by the Synapse team
-
+Made with ❤️ by the Synapse community
