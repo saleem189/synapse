@@ -132,18 +132,6 @@ Learn the architecture, understand existing code, and contribute effectively.
 
 ---
 
-## What's New
-
-**December 12, 2025:**
-- ✨ New Stripe/OpenAI-style product documentation
-- ✨ Reorganized contributor documentation
-- ✨ Clear separation: Product users vs Contributors
-- ✨ Short, focused pages (5-15 min reads)
-- ✨ Multi-language code examples
-- ✨ Copy/paste working code snippets
-
----
-
 ## Documentation Approach
 
 **Product Docs:**
@@ -174,7 +162,7 @@ Learn the architecture, understand existing code, and contribute effectively.
 
 Documentation improvements are always welcome!
 
-**Product Docs:** Follow Stripe/OpenAI style (short, examples-first)  
+**Product Docs:** Keep pages short and focused with working code examples  
 **Contributor Docs:** Be thorough, include code snippets, add troubleshooting
 
 See: [Contributing Guide](../CONTRIBUTING.md)
