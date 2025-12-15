@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Hash,
   Users,
@@ -35,6 +36,7 @@ import { RoomMembersPanel } from "./room-members-panel";
 import { ChatRoomHeader } from "./chat-room-header";
 import { MessageItem } from "./message-item";
 import { ChatRoomSearchDialog } from "./chat-room-search-dialog";
+import { PinnedMessagesPanel } from "./pinned-messages-panel";
 import dynamic from "next/dynamic";
 
 // Lazy load heavy modals for better initial load performance
@@ -239,6 +241,24 @@ export function ChatRoom({
   const [searchQuery, setSearchQuery] = useState("");
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+
+  // Query client for invalidating queries
+  const queryClient = useQueryClient();
+
+  // Fetch pinned messages count
+  const { data: pinnedCount = 0 } = useQuery({
+    queryKey: ['pinned-count', roomId],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get<any[]>(`/rooms/${roomId}/pinned`);
+        return response?.length || 0;
+      } catch (error) {
+        logger.error('Failed to fetch pinned count:', error);
+        return 0;
+      }
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
   // Convert participants to mentionable users format
   const mentionableUsers: MentionableUser[] = useMemo(() => (
@@ -779,6 +799,29 @@ export function ChatRoom({
       logger.error("❌ Socket is NOT connected! Messages won't be received.");
     }
 
+    // Pin/Unpin event listeners
+    socket.on("message:pinned", (data: { messageId: string; roomId: string; pinnedBy: any }) => {
+      if (data.roomId === roomId) {
+        logger.log("📌 Message pinned:", data.messageId);
+        // Invalidate queries to refetch
+        queryClient.invalidateQueries({ queryKey: ['pinned-count', roomId] });
+        queryClient.invalidateQueries({ queryKey: ['pinned-messages', roomId] });
+        // Show toast notification
+        if (data.pinnedBy?.name) {
+          toast.info(`${data.pinnedBy.name} pinned a message`);
+        }
+      }
+    });
+
+    socket.on("message:unpinned", (data: { messageId: string; roomId: string }) => {
+      if (data.roomId === roomId) {
+        logger.log("📌 Message unpinned:", data.messageId);
+        // Invalidate queries to refetch
+        queryClient.invalidateQueries({ queryKey: ['pinned-count', roomId] });
+        queryClient.invalidateQueries({ queryKey: ['pinned-messages', roomId] });
+      }
+    });
+
     // Cleanup
     return () => {
       logger.log("🧹 Cleaning up socket listeners for room:", roomId);
@@ -803,6 +846,8 @@ export function ChatRoom({
       socket.off("online-users");
       socket.off("user-online");
       socket.off("user-offline");
+      socket.off("message:pinned");
+      socket.off("message:unpinned");
     };
   }, [roomId, currentUserId, socket, isConnected]); // Only roomId and currentUserId in dependencies - handlers use refs for other values
 
@@ -896,6 +941,42 @@ export function ChatRoom({
     await deleteMessage(messageId);
   };
 
+  // Handle message pin
+  const handlePinMessage = async (messageId: string) => {
+    try {
+      const response = await apiClient.post(`/messages/${messageId}/pin`);
+      if (response) {
+        toast.success('Message pinned');
+        // Update message in store if needed
+        updateMessage(roomId, messageId, { isPinned: true } as any);
+        // Invalidate queries to refetch count and list
+        queryClient.invalidateQueries({ queryKey: ['pinned-count', roomId] });
+        queryClient.invalidateQueries({ queryKey: ['pinned-messages', roomId] });
+      }
+    } catch (error) {
+      // Error toast already shown by apiClient
+      logger.error('Failed to pin message:', error);
+    }
+  };
+
+  // Handle message unpin
+  const handleUnpinMessage = async (messageId: string) => {
+    try {
+      const response = await apiClient.delete(`/messages/${messageId}/pin`);
+      if (response !== null) {
+        toast.success('Message unpinned');
+        // Update message in store if needed
+        updateMessage(roomId, messageId, { isPinned: false } as any);
+        // Invalidate queries to refetch count and list
+        queryClient.invalidateQueries({ queryKey: ['pinned-count', roomId] });
+        queryClient.invalidateQueries({ queryKey: ['pinned-messages', roomId] });
+      }
+    } catch (error) {
+      // Error toast already shown by apiClient
+      logger.error('Failed to unpin message:', error);
+    }
+  };
+
   const handleTyping = (isTyping: boolean) => {
     if (isTyping) {
       startTyping();
@@ -950,33 +1031,29 @@ export function ChatRoom({
         showSearch={showSearch}
         showInfo={isInfoPanelOpen}
         showPinnedMessages={showPinnedMessages}
-        pinnedMessagesCount={0} // TODO: Fetch from API
+        pinnedMessagesCount={pinnedCount}
         onToggleSearch={() => setShowSearch(!showSearch)}
         onToggleInfo={toggleInfoPanel}
         onTogglePinnedMessages={() => setShowPinnedMessages(!showPinnedMessages)}
         onRoomSettings={openRoomSettingsModal}
       />
 
-      {/* Pinned Messages */}
-      {showPinnedMessages && (
-        <PinnedMessagesPanel
-          pinnedMessages={[]} // TODO: Fetch from API
-          onUnpin={(messageId) => {
-            toast.info("Unpin feature coming soon (API integration needed)");
-          }}
-          onJumpToMessage={(messageId) => {
-            // Basic jump to message implementation
-            const element = document.querySelector(`[data-message-id="${messageId}"]`);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-              toast.info("Message not found in current view");
-            }
-          }}
-          canUnpin={isRoomAdmin || false}
-          isLoading={false}
-        />
-      )}
+      {/* Pinned Messages Panel */}
+      <PinnedMessagesPanel
+        roomId={roomId}
+        open={showPinnedMessages}
+        onClose={() => setShowPinnedMessages(false)}
+        onMessageClick={(messageId) => {
+          // Jump to message in chat
+          const element = document.querySelector(`[data-message-id="${messageId}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setShowPinnedMessages(false);
+          } else {
+            toast.info("Message not found in current view");
+          }
+        }}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -1016,6 +1093,8 @@ export function ChatRoom({
                 onReply={handleReplyToMessage}
                 onEdit={handleEditMessage}
                 onDelete={handleDeleteMessage}
+                onPin={handlePinMessage}
+                onUnpin={handleUnpinMessage}
                 onReactionChange={async (messageId: string) => {
                   try {
                     const data = await apiClient.get<{ reactions: MessageReactions }>(`/messages/${messageId}/reactions`, {
@@ -1078,6 +1157,8 @@ export function ChatRoom({
                           onReply={handleReplyToMessage}
                           onEdit={handleEditMessage}
                           onDelete={handleDeleteMessage}
+                          onPin={handlePinMessage}
+                          onUnpin={handleUnpinMessage}
                           onReactionChange={async () => {
                             try {
                               const data = await apiClient.get<{ reactions: MessageReactions }>(`/messages/${message.id}/reactions`, {

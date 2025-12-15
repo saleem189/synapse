@@ -7,10 +7,11 @@
 
 import { memo } from "react";
 import { motion } from "framer-motion";
-import { Reply } from "lucide-react";
+import { Reply, Pin } from "lucide-react";
 import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { FileAttachment } from "./file-attachment";
@@ -38,6 +39,8 @@ interface MessageItemProps {
   onReply: (message: Message) => void;
   onEdit: (messageId: string, content: string) => void;
   onDelete: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
   onReactionChange: () => void;
   createLongPressHandlers: (message: Message) => any;
 }
@@ -55,6 +58,8 @@ export const MessageItem = memo(function MessageItem({
   onReply,
   onEdit,
   onDelete,
+  onPin,
+  onUnpin,
   onReactionChange,
   createLongPressHandlers,
 }: MessageItemProps) {
@@ -65,6 +70,8 @@ export const MessageItem = memo(function MessageItem({
       onReply={onReply}
       onEdit={onEdit}
       onDelete={onDelete}
+      onPin={onPin}
+      onUnpin={onUnpin}
     >
       <motion.div
         key={message.id}
@@ -126,9 +133,17 @@ export const MessageItem = memo(function MessageItem({
       <div className={cn("max-w-[70%] flex flex-col", isSent ? "items-end order-1" : "items-start")}>
         {/* Sender name (for group chats) */}
         {showName && (
-          <p className="text-xs text-muted-foreground mb-1.5 ml-1 font-medium">
-            {message.senderName}
-          </p>
+          <div className="flex items-center gap-1.5 mb-1.5 ml-1">
+            <p className="text-xs text-muted-foreground font-medium">
+              {message.senderName}
+            </p>
+            {(message as any).isPinned && (
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] flex items-center gap-0.5">
+                <Pin className="h-2.5 w-2.5" />
+                Pinned
+              </Badge>
+            )}
+          </div>
         )}
 
         {/* Bubble Container */}
