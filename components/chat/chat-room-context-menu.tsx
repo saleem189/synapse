@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Reply, Settings, X } from "lucide-react";
+import { Reply, Settings, X, Pin, PinOff } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -22,6 +22,8 @@ interface ChatRoomContextMenuProps {
   onReply: (message: Message) => void;
   onEdit: (messageId: string, content: string) => void;
   onDelete: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
 }
 
 export function ChatRoomContextMenu({
@@ -31,9 +33,20 @@ export function ChatRoomContextMenu({
   onReply,
   onEdit,
   onDelete,
+  onPin,
+  onUnpin,
 }: ChatRoomContextMenuProps) {
   const isOwnMessage = message.senderId === currentUserId;
   const canEdit = isOwnMessage && !message.isDeleted;
+  const isPinned = (message as any).isPinned || false; // Type-safe check for isPinned
+
+  const handlePinToggle = () => {
+    if (isPinned && onUnpin) {
+      onUnpin(message.id);
+    } else if (!isPinned && onPin) {
+      onPin(message.id);
+    }
+  };
 
   return (
     <ContextMenu>
@@ -48,6 +61,29 @@ export function ChatRoomContextMenu({
           <Reply className="w-4 h-4 mr-2" />
           Reply
         </ContextMenuItem>
+        
+        {(onPin || onUnpin) && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={handlePinToggle}
+              className="cursor-pointer"
+            >
+              {isPinned ? (
+                <>
+                  <PinOff className="w-4 h-4 mr-2" />
+                  Unpin Message
+                </>
+              ) : (
+                <>
+                  <Pin className="w-4 h-4 mr-2" />
+                  Pin Message
+                </>
+              )}
+            </ContextMenuItem>
+          </>
+        )}
+        
         {canEdit && (
           <>
             <ContextMenuSeparator />

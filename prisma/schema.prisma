@@ -67,6 +67,7 @@ model User {
   readMessages      MessageRead[]
   pushSubscriptions PushSubscription[]
   callSessions      CallParticipant[]
+  pinnedMessages    Message[]          @relation("PinnedMessages")
 
   @@index([email]) // Already unique, but explicit index for search queries
   @@index([status]) // For filtering by online/offline status
@@ -83,6 +84,7 @@ model ChatRoom {
   description String?  @db.VarChar(200)
   isGroup     Boolean  @default(false)
   avatar      String?
+  maxPins     Int      @default(50) // Maximum pinned messages per room
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -139,6 +141,12 @@ model Message {
   isEdited  Boolean @default(false)
   isDeleted Boolean @default(false)
 
+  // Pinning
+  isPinned   Boolean   @default(false)
+  pinnedAt   DateTime?
+  pinnedById String?
+  pinnedBy   User?     @relation("PinnedMessages", fields: [pinnedById], references: [id], onDelete: SetNull)
+
   replyToId String? // ID of message being replied to
   replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Message[] @relation("MessageReplies")
@@ -153,6 +161,9 @@ model Message {
   @@index([roomId, isDeleted, createdAt]) // Composite index for common query pattern
   @@index([senderId])
   @@index([replyToId])
+  @@index([roomId, isPinned]) // For fetching pinned messages
+  @@index([pinnedAt]) // For sorting pinned messages
+  @@index([pinnedById]) // For pinnedBy relation
   // Note: Full-text search index (GIN) must be created via SQL migration
   // See: prisma/migrations/add_fulltext_search_index.sql
   @@map("messages")
