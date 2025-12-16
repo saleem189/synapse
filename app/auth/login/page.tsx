@@ -225,21 +225,19 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Background */}
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Background - Minimal, clean design */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-surface-50 via-primary-50/30 to-accent-50/20 dark:from-surface-950 dark:via-surface-900 dark:to-surface-950" />
-        <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-primary-400/20 dark:bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-1/4 w-[600px] h-[600px] bg-accent-400/20 dark:bg-accent-500/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-muted/20 to-background" />
       </div>
 
       {/* Header */}
-      <header className="p-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-            <MessageCircle className="w-5 h-5 text-white" />
+      <header className="p-6 flex items-center justify-between border-b border-border">
+        <Link href="/" className="flex items-center gap-3 transition-base hover-scale">
+          <div className="w-12 h-12 rounded-lg bg-[hsl(var(--brand-primary))] flex items-center justify-center shadow-md">
+            <MessageCircle className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-surface-900 dark:text-white">
+          <span className="text-2xl font-black text-foreground">
             Synapse
           </span>
         </Link>
@@ -248,36 +246,38 @@ function LoginForm() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md animate-slide-up">
+        <div className="w-full max-w-md slide-in-up">
           {/* Card */}
-          <Card className="shadow-xl shadow-surface-900/5 dark:shadow-black/20">
-            <CardHeader className="text-center pb-6">
-              <CardTitle className="text-2xl mb-2">Welcome Back</CardTitle>
-              <CardDescription className="text-base">
+          <Card variant="elevated" className="shadow-xl">
+            <CardHeader className="text-center space-y-3 pb-8">
+              <CardTitle>Welcome Back</CardTitle>
+              <CardDescription>
                 Sign in to continue chatting
               </CardDescription>
             </CardHeader>
-            <CardContent className="px-8 pb-8">
+            <CardContent className="surface-padding-lg pb-8">
 
             {/* Error Message */}
             {error && (
-              <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-3 animate-scale-in">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600 dark:text-red-400">
+              <div className="mb-6 p-4 rounded-md bg-destructive/10 border border-destructive/30 flex items-center gap-3 scale-in">
+                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                <p className="text-caption text-destructive">
                   {error}
                 </p>
               </div>
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="email">
+                <Label htmlFor="email" className="text-body font-semibold text-foreground">
                   Email Address
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400 z-10" />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                  </div>
                   <Input
                     id="email"
                     type="email"
@@ -286,18 +286,23 @@ function LoginForm() {
                     placeholder="you@example.com"
                     required
                     disabled={isLoading}
-                    className={cn("pl-12", error && "border-destructive")}
+                    className={cn(
+                      "pl-10",
+                      error && "border-destructive focus-visible:ring-destructive"
+                    )}
                   />
                 </div>
               </div>
 
               {/* Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="password">
+                <Label htmlFor="password" className="text-body font-semibold text-foreground">
                   Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400 z-10" />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  </div>
                   <Input
                     id="password"
                     type="password"
@@ -306,7 +311,10 @@ function LoginForm() {
                     placeholder="••••••••"
                     required
                     disabled={isLoading}
-                    className={cn("pl-12", error && "border-destructive")}
+                    className={cn(
+                      "pl-10",
+                      error && "border-destructive focus-visible:ring-destructive"
+                    )}
                   />
                 </div>
               </div>
@@ -316,11 +324,12 @@ function LoginForm() {
                 type="submit"
                 disabled={isLoading}
                 variant="default"
-                className="w-full py-3.5"
+                size="default"
+                className="w-full press-effect"
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Signing in...
                   </>
                 ) : (
@@ -332,27 +341,27 @@ function LoginForm() {
             {/* Divider */}
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-surface-200 dark:border-surface-700" />
+                <div className="w-full border-t border-border" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white dark:bg-surface-900 text-surface-500">
+              <div className="relative flex justify-center text-caption">
+                <span className="px-4 bg-card text-muted-foreground">
                   New to Synapse?
                 </span>
               </div>
             </div>
 
             {/* Register Link */}
-            <Button variant="secondary" asChild className="w-full">
+            <Button variant="outline" asChild className="w-full press-effect">
               <Link href="/auth/register">Create an Account</Link>
             </Button>
             </CardContent>
           </Card>
 
           {/* Back to Home */}
-          <p className="text-center mt-6 text-sm text-surface-500 dark:text-surface-400">
+          <p className="text-center mt-6 text-caption text-muted-foreground">
             <Link
               href="/"
-              className="hover:text-primary-500 transition-colors"
+              className="hover:text-[hsl(var(--interactive))] transition-base"
             >
               ← Back to Home
             </Link>
@@ -366,8 +375,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-[hsl(var(--interactive))]" />
       </div>
     }>
       <LoginForm />

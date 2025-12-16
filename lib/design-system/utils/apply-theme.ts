@@ -61,12 +61,9 @@ export function applyTheme(themeName: Theme): 'light' | 'dark' {
   // Set surface-elevated as a separate variable for glassmorphic style
   root.style.setProperty('--color-surface-elevated', theme.colors.surfaceElevated);
   
-  // Update dark class for backward compatibility
-  if (theme.name === 'dark') {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
-  }
+  // NOTE: Do NOT manage the 'dark' class here!
+  // next-themes already handles this via NextThemesProvider
+  // Managing it here causes race conditions and flickering
   
   return theme.name;
 }

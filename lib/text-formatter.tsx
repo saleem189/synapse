@@ -149,9 +149,14 @@ export function renderFormattedText(
           <span
             key={index}
             className={cn(
-              "font-semibold text-primary-600 dark:text-primary-400",
+              "inline-flex items-center px-1 rounded",
+              "font-semibold text-[#1264a3] dark:text-[#1d9bd1]",
+              "bg-[#1264a3]/10 dark:bg-[#1d9bd1]/10",
+              "hover:bg-[#1264a3]/20 dark:hover:bg-[#1d9bd1]/20",
+              "cursor-pointer transition-colors",
               className
             )}
+            data-user-id={part.userId}
           >
             @{part.content}
           </span>

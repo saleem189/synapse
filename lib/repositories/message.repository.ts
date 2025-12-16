@@ -23,6 +23,9 @@ export type MessageWithRelations = Prisma.MessageGetPayload<{
       };
     };
     readReceipts: true;
+    _count: {
+      select: { replies: true }; // Count replies to this message
+    };
   };
 }>;
 
@@ -128,6 +131,11 @@ export class MessageRepository extends BaseRepository<
               },
             }
           : true,
+        _count: {
+          select: {
+            replies: true, // Count replies to this message
+          },
+        },
       },
     });
 

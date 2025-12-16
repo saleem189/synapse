@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { getIO } from '@/lib/socket-server-client';
+import { broadcastPinUpdate } from '@/lib/socket-server-client';
+import { z } from 'zod';
+import { handleError } from '@/lib/errors/error-handler';
+
+// Zod schema for params validation (Security Rule: Input Validation)
+const pinMessageParamsSchema = z.object({
+  messageId: z.string().cuid('Invalid message ID format'),
+});
 
 // POST /api/messages/:messageId/pin - Pin a message
 export async function POST(
   req: NextRequest,
-  { params }: { params: { messageId: string } }
+  { params }: { params: Promise<{ messageId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const messageId = params.messageId;
+    // Validate params (Security Rule: Input Validation with Zod)
+    const { messageId } = pinMessageParamsSchema.parse(await params);
 
     // Get message and verify access
     const message = await prisma.message.findUnique({
@@ -70,41 +79,40 @@ export async function POST(
       }
     });
 
-    // Emit socket event
+    // Broadcast pin update via socket
     try {
-      const io = getIO();
-      io.to(message.roomId).emit('message:pinned', {
+      await broadcastPinUpdate(
+        message.roomId,
         messageId,
-        roomId: message.roomId,
-        pinnedBy: updated.pinnedBy
-      });
+        true, // isPinned
+        session.user.id,
+        updated.pinnedAt?.toISOString() || null
+      );
     } catch (socketError) {
       // Socket error shouldn't fail the API request
-      console.error('Socket emit error:', socketError);
+      console.error('Socket broadcast error:', socketError);
     }
 
     return NextResponse.json(updated);
   } catch (error) {
     console.error('Error pinning message:', error);
-    return NextResponse.json(
-      { error: 'Failed to pin message' },
-      { status: 500 }
-    );
+    return handleError(error);
   }
 }
 
 // DELETE /api/messages/:messageId/pin - Unpin a message
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { messageId: string } }
+  { params }: { params: Promise<{ messageId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const messageId = params.messageId;
+    // Validate params (Security Rule: Input Validation with Zod)
+    const { messageId } = pinMessageParamsSchema.parse(await params);
 
     // Get message
     const message = await prisma.message.findUnique({
@@ -138,25 +146,23 @@ export async function DELETE(
       }
     });
 
-    // Emit socket event
+    // Broadcast unpin update via socket
     try {
-      const io = getIO();
-      io.to(message.roomId).emit('message:unpinned', {
+      await broadcastPinUpdate(
+        message.roomId,
         messageId,
-        roomId: message.roomId,
-        unpinnedBy: { id: session.user.id, name: session.user.name }
-      });
+        false, // isPinned
+        session.user.id,
+        null // pinnedAt is null when unpinned
+      );
     } catch (socketError) {
-      console.error('Socket emit error:', socketError);
+      console.error('Socket broadcast error:', socketError);
     }
 
     return NextResponse.json(updated);
   } catch (error) {
     console.error('Error unpinning message:', error);
-    return NextResponse.json(
-      { error: 'Failed to unpin message' },
-      { status: 500 }
-    );
+    return handleError(error);
   }
 }
 

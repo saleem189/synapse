@@ -66,5 +66,8 @@ export interface CreateRoomRequest {
 export interface RoomResponse extends ChatRoom {
   ownerId?: string;
   unreadCount?: number;
+  isFavorite?: boolean;
+  isMuted?: boolean;
+  mutedUntil?: string | null;
 }
 

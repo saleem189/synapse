@@ -1,16 +1,17 @@
 // ================================
-// Chat Layout
+// Chat Layout - 3-Tier Architecture
 // ================================
-// Layout for all chat pages with sidebar
+// Professional 3-panel layout: Sidebar | Main | Contextual
+// Resizable, collapsible, responsive
 
 import { cache } from "react";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { ChatSidebar } from "@/components/chat/chat-sidebar";
+import { Chat3TierLayout } from "@/components/chat/chat-3-tier-layout";
 import { UserStoreProvider } from "@/components/chat/user-store-provider";
 import { NetworkStatusMonitor } from "@/components/chat/network-status-monitor";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { QuickSwitcher } from "@/components/chat/quick-switcher";
 
 // Cache session lookup to avoid re-fetching on every navigation
 const getSession = cache(async () => {
@@ -44,12 +45,13 @@ export default async function ChatLayout({
       {/* Network Status Monitor (shows toasts only, no UI) */}
       <NetworkStatusMonitor />
       
-      <SidebarProvider>
-        <ChatSidebar />
-        <SidebarInset>
-          {children}
-        </SidebarInset>
-      </SidebarProvider>
+      {/* Quick Switcher (CMD+K / CTRL+K) */}
+      <QuickSwitcher />
+      
+      {/* 3-Tier Resizable Layout */}
+      <Chat3TierLayout>
+        {children}
+      </Chat3TierLayout>
     </UserStoreProvider>
   );
 }

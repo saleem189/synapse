@@ -15,7 +15,7 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ className }: ThemeToggleProps) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   // Avoid hydration mismatch
@@ -38,7 +38,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     );
   }
 
-  const isDark = theme === "dark";
+  // Use resolvedTheme to check actual active theme (dark or light)
+  // theme can be "system", but resolvedTheme is always "dark" or "light"
+  const isDark = resolvedTheme === "dark";
 
   return (
     <button

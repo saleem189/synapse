@@ -107,6 +107,15 @@ model RoomParticipant {
   id       String   @id @default(cuid())
   joinedAt DateTime @default(now())
   role     String   @default("member")
+  
+  // Favorites
+  isFavorite   Boolean   @default(false)
+  favoritedAt  DateTime?
+
+  // Mute/Notifications
+  isMuted      Boolean   @default(false)
+  mutedAt      DateTime?
+  mutedUntil   DateTime? // For temporary muting (e.g., mute for 1 hour, 8 hours, etc.)
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -117,6 +126,8 @@ model RoomParticipant {
   @@unique([userId, roomId])
   @@index([userId]) // For faster user room lookups
   @@index([roomId]) // For faster room participant queries
+  @@index([userId, isFavorite]) // For fetching user's favorite rooms
+  @@index([userId, isMuted]) // For filtering muted rooms
   @@map("room_participants")
 }
 

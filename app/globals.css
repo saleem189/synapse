@@ -15,32 +15,97 @@
    /* Theme colors are set dynamically by JavaScript */
    /* These are default values (will be overridden) */
 :root {
-  /* Color variables (set by apply-theme.ts) */
-  --background: 0 0% 100%;
-  --foreground: 0 0% 3.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 3.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 3.9%;
-  --primary: 0 0% 9%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 0 0% 96.1%;
-  --secondary-foreground: 0 0% 9%;
-  --muted: 0 0% 96.1%;
-  --muted-foreground: 0 0% 45.1%;
-  --accent: 0 0% 96.1%;
-  --accent-foreground: 0 0% 9%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 89.8%;
-  --input: 0 0% 89.8%;
-  --ring: 0 0% 3.9%;
-  --chart-1: 12 76% 61%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
-  --radius: 0.5rem;
+  /* ==================================
+     Synapse Design System V2.0
+     Slack-Inspired Color Palette
+     ================================== */
+  
+  /* Backgrounds */
+  --background: 0 0% 100%;              /* Pure white */
+  --surface: 248 248 248 / 100%;        /* #f8f8f8 - Slack sidebar bg */
+  --surface-elevated: 0 0% 100%;        /* White cards */
+  
+  /* Foregrounds */
+  --foreground: 218 11% 11%;            /* #1d1c1d - Slack text */
+  --text-secondary: 218 1% 38%;         /* #616061 - Muted */
+  --text-tertiary: 0 0% 57%;            /* #919191 - Disabled */
+  
+  /* Brand Colors */
+  --brand-primary: 272 76% 19%;         /* #4a154b - Aubergine */
+  --brand-primary-hover: 272 63% 26%;   /* #611f69 */
+  --brand-secondary: 163 100% 24%;      /* #007a5a - Teal */
+  
+  /* Interactive */
+  --primary: 193 95% 43%;               /* #1d9bd1 - Slack blue */
+  --primary-foreground: 0 0% 100%;      /* White */
+  --interactive: 193 95% 43%;           /* #1d9bd1 */
+  --interactive-hover: 199 85% 35%;     /* #1264a3 */
+  --interactive-active: 272 76% 19%;    /* #4a154b */
+  
+  /* Secondary */
+  --secondary: 0 0% 96%;                /* Light gray */
+  --secondary-foreground: 218 11% 11%;  /* Dark text */
+  
+  /* Muted */
+  --muted: 0 0% 97%;                    /* #f8f8f8 */
+  --muted-foreground: 218 1% 38%;       /* #616061 */
+  
+  /* Accent */
+  --accent: 272 76% 19%;                /* Aubergine */
+  --accent-foreground: 0 0% 100%;       /* White */
+  
+  /* Cards */
+  --card: 0 0% 100%;                    /* White */
+  --card-foreground: 218 11% 11%;       /* Dark text */
+  
+  /* Popovers */
+  --popover: 0 0% 100%;                 /* White */
+  --popover-foreground: 218 11% 11%;    /* Dark text */
+  
+  /* Destructive */
+  --destructive: 353 67% 60%;           /* #e2445c - Red */
+  --destructive-foreground: 0 0% 100%;  /* White */
+  
+  /* Borders */
+  --border: 0 0% 87%;                   /* #dddddd - Slack borders */
+  --border-strong: 0 0% 73%;            /* #bababa */
+  --input: 0 0% 87%;                    /* #dddddd */
+  --ring: 193 95% 43%;                  /* Blue ring */
+  
+  /* Success/Warning/Info */
+  --success: 163 100% 24%;              /* #007a5a - Teal */
+  --warning: 27 86% 53%;                /* #ed8822 - Orange */
+  --info: 193 95% 43%;                  /* #1d9bd1 - Blue */
+  
+  /* Sidebar (Slack Aubergine) */
+  --sidebar-background: 272 76% 19%;    /* #4a154b */
+  --sidebar-foreground: 0 0% 100%;      /* White */
+  --sidebar-primary: 193 95% 43%;       /* Blue */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 272 63% 26%;        /* Hover #612162 */
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 272 63% 26%;        /* #612162 */
+  --sidebar-ring: 193 95% 43%;          /* Blue */
+  --sidebar-muted: 272 15% 73%;         /* #bcabbd - Muted text */
+  --sidebar-active: 199 85% 35%;        /* #1264a3 - Active channel */
+  
+  /* Mention & Badge */
+  --mention: 353 67% 60%;               /* #e2445c - Red */
+  --badge: 353 67% 60%;                 /* #e2445c */
+  --badge-text: 0 0% 100%;              /* White */
+  
+  /* Chart colors */
+  --chart-1: 193 95% 43%;               /* Blue */
+  --chart-2: 163 100% 24%;              /* Teal */
+  --chart-3: 272 76% 19%;               /* Aubergine */
+  --chart-4: 27 86% 53%;                /* Orange */
+  --chart-5: 353 67% 60%;               /* Red */
+  
+  /* Border Radius */
+  --radius: 0.375rem;                   /* 6px - Slack standard */
+  --radius-sm: 0.25rem;                 /* 4px */
+  --radius-md: 0.5rem;                  /* 8px */
+  --radius-lg: 0.75rem;                 /* 12px */
   
   /* Style effect variables (set by apply-style.ts) */
   --effect-background-opacity: 1;
@@ -56,31 +121,90 @@
 }
 
 .dark {
-  /* Dark theme colors (set by apply-theme.ts) */
-  --background: 0 0% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 0 0% 9%;
-  --secondary: 0 0% 14.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 14.9%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 0 0% 14.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 14.9%;
-  --input: 0 0% 14.9%;
-  --ring: 0 0% 83.1%;
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  /* ==================================
+     Dark Mode - Slack-Inspired
+     ================================== */
+  
+  /* Backgrounds */
+  --background: 0 0% 10%;               /* #1a1a1a - Dark bg */
+  --surface: 0 0% 7%;                   /* #121212 - Sidebar */
+  --surface-elevated: 0 0% 13%;         /* #212121 - Cards */
+  
+  /* Foregrounds */
+  --foreground: 0 0% 100%;              /* White text */
+  --text-secondary: 0 0% 74%;           /* #bcbcbc - Muted */
+  --text-tertiary: 0 0% 57%;            /* #919191 - Disabled */
+  
+  /* Brand Colors (same) */
+  --brand-primary: 272 76% 19%;         /* #4a154b */
+  --brand-primary-hover: 272 63% 26%;   /* #611f69 */
+  --brand-secondary: 163 100% 24%;      /* #007a5a */
+  
+  /* Interactive (brighter in dark) */
+  --primary: 199 100% 47%;              /* #00aeef - Bright blue */
+  --primary-foreground: 0 0% 100%;      /* White */
+  --interactive: 199 100% 47%;          /* #00aeef */
+  --interactive-hover: 193 95% 43%;     /* #1d9bd1 */
+  --interactive-active: 272 63% 26%;    /* #612162 */
+  
+  /* Secondary */
+  --secondary: 0 0% 13%;                /* Dark gray */
+  --secondary-foreground: 0 0% 100%;    /* White */
+  
+  /* Muted */
+  --muted: 0 0% 13%;                    /* #212121 */
+  --muted-foreground: 0 0% 57%;         /* #919191 */
+  
+  /* Accent */
+  --accent: 272 63% 26%;                /* Lighter aubergine */
+  --accent-foreground: 0 0% 100%;       /* White */
+  
+  /* Cards */
+  --card: 0 0% 13%;                     /* #212121 */
+  --card-foreground: 0 0% 100%;         /* White */
+  
+  /* Popovers */
+  --popover: 0 0% 13%;                  /* #212121 */
+  --popover-foreground: 0 0% 100%;      /* White */
+  
+  /* Destructive (brighter) */
+  --destructive: 351 100% 69%;          /* #ff6378 - Bright red */
+  --destructive-foreground: 0 0% 100%;  /* White */
+  
+  /* Borders */
+  --border: 0 0% 27%;                   /* #444 - Dark borders */
+  --border-strong: 0 0% 33%;            /* #555 */
+  --input: 0 0% 27%;                    /* #444 */
+  --ring: 199 100% 47%;                 /* Bright blue ring */
+  
+  /* Success/Warning/Info (brighter) */
+  --success: 199 100% 47%;              /* #00aeef */
+  --warning: 32 100% 64%;               /* #ffbe46 */
+  --info: 199 100% 47%;                 /* #00aeef */
+  
+  /* Sidebar (darker in dark mode) */
+  --sidebar-background: 0 0% 7%;        /* #121212 */
+  --sidebar-foreground: 0 0% 100%;      /* White */
+  --sidebar-primary: 199 100% 47%;      /* Bright blue */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 13%;           /* #212121 - Hover */
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 27%;           /* #444 */
+  --sidebar-ring: 199 100% 47%;         /* Blue */
+  --sidebar-muted: 0 0% 57%;            /* #919191 */
+  --sidebar-active: 272 63% 26%;        /* #612162 */
+  
+  /* Mention & Badge */
+  --mention: 351 100% 69%;              /* #ff6378 */
+  --badge: 351 100% 69%;                /* #ff6378 */
+  --badge-text: 0 0% 100%;              /* White */
+  
+  /* Chart colors (brighter) */
+  --chart-1: 199 100% 47%;              /* Bright blue */
+  --chart-2: 163 100% 35%;              /* Brighter teal */
+  --chart-3: 272 63% 35%;               /* Lighter aubergine */
+  --chart-4: 32 100% 64%;               /* Bright orange */
+  --chart-5: 351 100% 69%;              /* Bright red */
 }
 
 /* ================================
@@ -123,27 +247,70 @@
 
   /* Focus visible styles */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-950;
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
-  :root {
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+  
+  /* ==================================
+     Typography System
+     ================================== */
+  
+  /* Headings */
+  h1, .heading-1 {
+    @apply text-2xl font-bold leading-tight;
+    font-size: 1.875rem; /* 30px */
   }
-  .dark {
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+  
+  h2, .heading-2 {
+    @apply text-xl font-bold leading-tight;
+    font-size: 1.5rem; /* 24px */
+  }
+  
+  h3, .heading-3 {
+    @apply text-lg font-semibold leading-normal;
+    font-size: 1.125rem; /* 18px */
+  }
+  
+  h4, .heading-4 {
+    @apply text-base font-semibold leading-normal;
+    font-size: 0.9375rem; /* 15px */
+  }
+  
+  /* Body text */
+  body, .text-body {
+    font-size: 0.9375rem; /* 15px */
+    line-height: 1.46668;
+  }
+  
+  /* Text sizes */
+  .text-caption {
+    font-size: 0.8125rem; /* 13px */
+  }
+  
+  .text-label {
+    font-size: 0.6875rem; /* 11px */
+    line-height: 1.2;
+  }
+  
+  .text-micro {
+    font-size: 0.625rem; /* 10px */
+    line-height: 1.2;
+  }
+  
+  /* Text color utilities */
+  .text-primary {
+    color: hsl(var(--foreground));
+  }
+  
+  .text-secondary {
+    color: hsl(var(--text-secondary));
+  }
+  
+  .text-tertiary {
+    color: hsl(var(--text-tertiary));
+  }
+  
+  .text-muted {
+    color: hsl(var(--muted-foreground));
   }
 }
 
@@ -361,12 +528,217 @@
     display: none;
   }
 
+  /* ==================================
+     Professional Animations & Transitions
+     ================================== */
+  
+  /* Base transitions */
+  .transition-base {
+    transition: all 0.15s ease;
+  }
+  
+  .transition-fast {
+    transition: all 0.1s ease;
+  }
+  
+  .transition-smooth {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Hover effects */
+  .hover-lift {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .hover-scale {
+    transition: transform 0.15s ease;
+  }
+  
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+  
+  /* Button press animation */
+  .press-effect:active {
+    transform: scale(0.98);
+    transition: transform 0.05s ease;
+  }
+  
+  /* Fade animations */
+  .fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  .fade-out {
+    animation: fadeOut 0.2s ease-out forwards;
+  }
+  
+  /* Slide animations */
+  .slide-in-up {
+    animation: slideInUp 0.3s ease-out forwards;
+  }
+  
+  .slide-in-down {
+    animation: slideInDown 0.3s ease-out forwards;
+  }
+  
+  .slide-in-left {
+    animation: slideInLeft 0.3s ease-out forwards;
+  }
+  
+  .slide-in-right {
+    animation: slideInRight 0.3s ease-out forwards;
+  }
+  
+  /* Scale animations */
+  .scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+  
   /* Animation delays */
   .animation-delay-100 { animation-delay: 100ms; }
   .animation-delay-200 { animation-delay: 200ms; }
   .animation-delay-300 { animation-delay: 300ms; }
   .animation-delay-400 { animation-delay: 400ms; }
   .animation-delay-500 { animation-delay: 500ms; }
+  
+  /* Keyframes */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Pulse animation for badges */
+  .pulse-badge {
+    animation: pulseBadge 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes pulseBadge {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  /* ==================================
+     Spacing System (8px base unit)
+     ================================== */
+  
+  /* Gap utilities for flexbox/grid */
+  .gap-1 { gap: 0.25rem; }      /* 4px */
+  .gap-2 { gap: 0.5rem; }       /* 8px */
+  .gap-3 { gap: 0.75rem; }      /* 12px */
+  .gap-4 { gap: 1rem; }         /* 16px */
+  .gap-5 { gap: 1.25rem; }      /* 20px */
+  .gap-6 { gap: 1.5rem; }       /* 24px */
+  .gap-8 { gap: 2rem; }         /* 32px */
+  
+  /* Component-specific spacing (semantic names) */
+  .message-container {
+    padding: 0.5rem 1.25rem; /* 8px 20px */
+  }
+  
+  .message-container:hover {
+    background-color: hsl(var(--muted) / 0.5);
+  }
+  
+  .list-item {
+    padding: 0.375rem 0.75rem; /* 6px 12px */
+  }
+  
+  .list-item:hover {
+    background-color: hsl(var(--accent));
+  }
+  
+  .input-field {
+    padding: 0 0.75rem; /* 0 12px */
+    height: 2.75rem; /* 44px */
+  }
+  
+  .button-base {
+    padding: 0.5rem 1rem; /* 8px 16px */
+  }
+  
+  .button-sm {
+    padding: 0.375rem 0.75rem; /* 6px 12px */
+  }
+  
+  .button-lg {
+    padding: 0.625rem 1.25rem; /* 10px 20px */
+  }
+  
+  /* Surface spacing */
+  .surface-padding-sm { padding: 0.75rem; }   /* 12px */
+  .surface-padding { padding: 1rem; }         /* 16px */
+  .surface-padding-lg { padding: 1.5rem; }    /* 24px */
+  .surface-padding-xl { padding: 2rem; }      /* 32px */
 }
 /* ---break---
 */
@@ -388,5 +760,544 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ================================
+ * Density Mode Global Styles
+ * ================================
+ * Applied globally to entire app via [data-density] attribute
+ */
+
+/* CSS Variables for Compact Mode */
+[data-density="compact"] {
+  /* Spacing */
+  --spacing-unit: 0.25rem;
+  --spacing-xs: 0.125rem;
+  --spacing-sm: 0.25rem;
+  --spacing-md: 0.5rem;
+  --spacing-lg: 0.75rem;
+  --spacing-xl: 1rem;
+  
+  /* Typography */
+  --text-xs: 0.625rem;
+  --text-sm: 0.75rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --line-height: 1.25;
+  
+  /* Components */
+  --button-height: 2rem;
+  --input-height: 2rem;
+  --avatar-sm: 1.25rem;
+  --avatar-md: 1.5rem;
+  --avatar-lg: 2rem;
+  --border-radius: 0.5rem;
+}
+
+/* CSS Variables for Comfortable Mode */
+[data-density="comfortable"] {
+  /* Spacing */
+  --spacing-unit: 0.5rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+  
+  /* Typography */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --line-height: 1.5;
+  
+  /* Components */
+  --button-height: 2.5rem;
+  --input-height: 2.5rem;
+  --avatar-sm: 1.5rem;
+  --avatar-md: 2rem;
+  --avatar-lg: 2.5rem;
+  --border-radius: 0.75rem;
+}
+
+/* Global Text Sizing */
+[data-density="compact"] {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+[data-density="comfortable"] {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Sidebar Global Styles */
+[data-density="compact"] [data-sidebar] {
+  font-size: 0.875rem;
+}
+
+[data-density="comfortable"] [data-sidebar] {
+  font-size: 1rem;
+}
+
+/* Buttons (all buttons globally) */
+[data-density="compact"] button,
+[data-density="compact"] [role="button"] {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  min-height: 2rem;
+}
+
+[data-density="comfortable"] button,
+[data-density="comfortable"] [role="button"] {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  min-height: 2.5rem;
+}
+
+/* Input fields (all inputs globally) */
+[data-density="compact"] input,
+[data-density="compact"] textarea,
+[data-density="compact"] select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  min-height: 2rem;
+}
+
+[data-density="comfortable"] input,
+[data-density="comfortable"] textarea,
+[data-density="comfortable"] select {
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  min-height: 2.5rem;
+}
+
+/* Headers (all headers globally) */
+[data-density="compact"] header {
+  padding: 0.5rem 0.75rem;
+  min-height: 3rem;
+}
+
+[data-density="comfortable"] header {
+  padding: 0.75rem 1rem;
+  min-height: 3.5rem;
+}
+
+/* Cards and Panels */
+[data-density="compact"] [class*="card"],
+[data-density="compact"] [class*="panel"] {
+  padding: 0.75rem;
+  gap: 0.5rem;
+}
+
+[data-density="comfortable"] [class*="card"],
+[data-density="comfortable"] [class*="panel"] {
+  padding: 1rem;
+  gap: 0.75rem;
+}
+
+/* Lists and Menu Items */
+[data-density="compact"] [role="menuitem"],
+[data-density="compact"] li {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  min-height: 2rem;
+}
+
+[data-density="comfortable"] [role="menuitem"],
+[data-density="comfortable"] li {
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  min-height: 2.5rem;
+}
+
+/* Avatars (all avatars globally using Shadcn classes) */
+[data-density="compact"] [class*="avatar"] {
+  width: var(--avatar-md) !important;
+  height: var(--avatar-md) !important;
+}
+
+[data-density="comfortable"] [class*="avatar"] {
+  width: var(--avatar-md) !important;
+  height: var(--avatar-md) !important;
+}
+
+/* Badges and Pills */
+[data-density="compact"] [class*="badge"] {
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+}
+
+[data-density="comfortable"] [class*="badge"] {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Dialog and Modal Sizing */
+[data-density="compact"] [role="dialog"] {
+  padding: 1rem;
+}
+
+[data-density="comfortable"] [role="dialog"] {
+  padding: 1.5rem;
+}
+
+/* ================================
+ * UI Polish Enhancements
+ * ================================
+ * Enhanced animations and microinteractions
+ */
+
+@layer base {
+  :root {
+    /* Animation timings (from Slack) */
+    --animation-fast: 150ms;
+    --animation-base: 200ms;
+    --animation-slow: 300ms;
+    --animation-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+}
+
+/* Button microinteractions */
+.button-animate {
+  transition: transform var(--animation-base) var(--animation-easing),
+              box-shadow var(--animation-base) var(--animation-easing);
+}
+
+.button-animate:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.button-animate:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Hover actions slide-in */
+.hover-actions {
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity var(--animation-base) var(--animation-easing),
+              transform var(--animation-base) var(--animation-easing);
+}
+
+.group:hover .hover-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Badge pulse animation */
+@keyframes badge-pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.05); 
+    opacity: 0.9;
+  }
+}
+
+.badge-new {
+  animation: badge-pulse 1s ease-in-out 3;
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton-shimmer {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted) / 0.8) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 1000px 100%;
+}
+
+/* Smooth fade-in for new messages */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-enter {
+  animation: fade-in-up var(--animation-base) var(--animation-easing);
+}
+
+/* Smooth hover state for messages */
+.message-hover-bg {
+  transition: background-color var(--animation-base) var(--animation-easing);
+}
+
+.message-hover-bg:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+/* ================================
+   WYSIWYG Editor Styles
+   ================================ */
+.wysiwyg-editor {
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+}
+
+/* Placeholder when empty */
+.wysiwyg-editor.empty:before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  position: absolute;
+}
+
+/* Bold text */
+.wysiwyg-editor strong,
+.wysiwyg-editor b {
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+/* Italic text */
+.wysiwyg-editor em,
+.wysiwyg-editor i {
+  font-style: italic;
+  color: hsl(var(--foreground));
+}
+
+/* Strikethrough */
+.wysiwyg-editor s,
+.wysiwyg-editor strike,
+.wysiwyg-editor del {
+  text-decoration: line-through;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Underline */
+.wysiwyg-editor u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Inline code */
+.wysiwyg-editor code,
+.wysiwyg-editor .inline-code-wysiwyg {
+  display: inline;
+  padding: 0.125rem 0.375rem;
+  margin: 0 0.125rem;
+  border-radius: 0.25rem;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+/* Links */
+.wysiwyg-editor a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.wysiwyg-editor a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Blockquote */
+.wysiwyg-editor blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid hsl(var(--primary));
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Lists */
+.wysiwyg-editor ul,
+.wysiwyg-editor ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.wysiwyg-editor ul {
+  list-style-type: disc;
+}
+
+.wysiwyg-editor ol {
+  list-style-type: decimal;
+}
+
+.wysiwyg-editor li {
+  margin: 0.25rem 0;
+  color: hsl(var(--foreground));
+}
+
+/* Paragraphs and line breaks */
+.wysiwyg-editor p {
+  margin: 0.5rem 0;
+}
+
+.wysiwyg-editor p:first-child {
+  margin-top: 0;
+}
+
+.wysiwyg-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.wysiwyg-editor br {
+  display: block;
+  content: "";
+  margin: 0.25rem 0;
+}
+
+/* Selection styling */
+.wysiwyg-editor::selection {
+  background-color: hsl(var(--primary) / 0.2);
+}
+
+/* Focus state */
+.wysiwyg-editor:focus {
+  outline: none;
+}
+
+/* Disable resize on contenteditable */
+.wysiwyg-editor[contenteditable="true"] {
+  -webkit-user-modify: read-write-plaintext-only;
+}
+
+/* ================================
+   Message Preview Styles
+   ================================ */
+.preview-content {
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.preview-content p {
+  margin: 0.5rem 0;
+  color: hsl(var(--foreground));
+}
+
+.preview-content p:first-child {
+  margin-top: 0;
+}
+
+.preview-content p:last-child {
+  margin-bottom: 0;
+}
+
+.preview-content strong {
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.preview-content em {
+  font-style: italic;
+  color: hsl(var(--foreground));
+}
+
+.preview-content del {
+  text-decoration: line-through;
+  color: hsl(var(--muted-foreground));
+}
+
+.preview-content .inline-code {
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+.preview-content .code-block {
+  display: block;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  border-radius: 0.5rem;
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  line-height: 1.5;
+  white-space: pre;
+  color: hsl(var(--foreground));
+}
+
+.preview-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.preview-content a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.preview-content blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid hsl(var(--primary));
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+
+.preview-content li {
+  margin: 0.25rem 0;
+  color: hsl(var(--foreground));
+}
+
+.preview-content li.bullet {
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.preview-content li.bullet::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  color: hsl(var(--foreground));
+}
+
+.preview-content li.ordered {
+  padding-left: 1.5rem;
+  position: relative;
+  counter-increment: list-counter;
+}
+
+.preview-content li.ordered:first-child {
+  counter-reset: list-counter;
+}
+
+.preview-content li.ordered::before {
+  content: counter(list-counter) ".";
+  position: absolute;
+  left: 0;
+  color: hsl(var(--foreground));
+}
+
+.preview-content br {
+  display: block;
+  content: "";
+  margin: 0.25rem 0;
 }
 

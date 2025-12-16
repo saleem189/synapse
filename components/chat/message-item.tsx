@@ -1,26 +1,24 @@
 // ================================
-// Message Item Component
+// Message Item Component - Slack Style
 // ================================
-// Individual message bubble with React.memo for performance
+// Flat design with hover backgrounds, single-column layout
 
 "use client";
 
-import { memo } from "react";
-import { motion } from "framer-motion";
+import { memo, useState } from "react";
 import { Reply, Pin } from "lucide-react";
-import { cn, getInitials } from "@/lib/utils";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { cn, formatMessageTime } from "@/lib/utils";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { FileAttachment } from "./file-attachment";
 import { MessageReactions } from "./message-reactions";
 import { ReadReceipts } from "./read-receipts";
-import { MessageActions } from "./message-actions";
-import { MessageTime } from "./message-time";
 import { LinkPreview } from "./link-preview";
 import { ChatRoomContextMenu } from "./chat-room-context-menu";
+import { ReplyCountBadge } from "./reply-count-badge";
+import { MessageHoverActions } from "./message-hover-actions";
+import { UserProfileCard } from "./user-profile-card";
 import { parseFormattedText, renderFormattedText } from "@/lib/text-formatter";
 import { sanitizeMessageContent } from "@/lib/sanitize";
 import { getFirstUrl } from "@/lib/url-detector";
@@ -63,6 +61,9 @@ export const MessageItem = memo(function MessageItem({
   onReactionChange,
   createLongPressHandlers,
 }: MessageItemProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [contextMenuHandler, setContextMenuHandler] = useState<((e: React.MouseEvent) => void) | null>(null);
+  
   return (
     <ChatRoomContextMenu
       message={message}
@@ -72,318 +73,213 @@ export const MessageItem = memo(function MessageItem({
       onDelete={onDelete}
       onPin={onPin}
       onUnpin={onUnpin}
+      onOpenContextMenu={(handler) => setContextMenuHandler(() => handler)}
     >
-      <motion.div
-        key={message.id}
+      <div
         data-message-id={message.id}
-        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ 
-          duration: 0.2,
-          ease: "easeOut"
-        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "flex items-end gap-2.5",
-          isSent ? "justify-end" : "justify-start",
-          spacing
+          "group relative px-5 transition-base",
+          "hover:bg-surface-100 dark:hover:bg-surface-800",
+          message.isPinned && "bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-amber-500 pl-4",
+          // Slack-style spacing:
+          // - Consecutive messages: minimal spacing (py-0.5 + mt-0.5 = 2px total)
+          // - New group: moderate spacing (py-1 + mt-2 = 8px total)
+          isConsecutive ? "py-0.5 mt-0.5" : "py-1 mt-2"
         )}
+        {...createLongPressHandlers(message)}
       >
-      {/* Avatar (for received messages) */}
-      {!isSent && (
-        <div className="w-8 flex-shrink-0">
-          {showAvatar && (
-            <HoverCard key={`hover-${message.id}`} openDelay={200} closeDelay={100}>
-              <HoverCardTrigger asChild>
-                <button type="button" className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
-                  <Avatar className="w-8 h-8 bg-gradient-to-br from-primary to-accent">
-                    <AvatarImage src={message.senderAvatar || undefined} alt={message.senderName} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xs font-semibold">
-                      {getInitials(message.senderName)}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80" side="right" align="start">
-                <div className="flex justify-between space-x-4">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={message.senderAvatar || undefined} alt={message.senderName} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
-                      {getInitials(message.senderName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-1 flex-1">
-                    <h4 className="text-sm font-semibold">{message.senderName}</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Synapse User
-                    </p>
-                    <div className="flex items-center pt-2">
-                      <span className="text-xs text-muted-foreground">
-                        Hover to view profile
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </HoverCardContent>
-            </HoverCard>
-          )}
-        </div>
-      )}
-
-      {/* Message Bubble */}
-      <div className={cn("max-w-[70%] flex flex-col", isSent ? "items-end order-1" : "items-start")}>
-        {/* Sender name (for group chats) */}
-        {showName && (
-          <div className="flex items-center gap-1.5 mb-1.5 ml-1">
-            <p className="text-xs text-muted-foreground font-medium">
-              {message.senderName}
-            </p>
-            {(message as any).isPinned && (
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px] flex items-center gap-0.5">
-                <Pin className="h-2.5 w-2.5" />
-                Pinned
-              </Badge>
+        {/* Slack-style flat layout */}
+        <div className="flex gap-2">
+          {/* Avatar (36px - Slack size) */}
+          <div className="flex-shrink-0">
+            {showAvatar ? (
+              <UserAvatar
+                name={message.senderName}
+                src={message.senderAvatar}
+                size="md"
+                className="w-9 h-9"
+              />
+            ) : (
+              <div className="w-9 h-9" /> // Placeholder for consistent spacing
             )}
           </div>
-        )}
 
-        {/* Bubble Container */}
-        <div 
-          className="relative group"
-          {...createLongPressHandlers(message)}
-        >
-          {/* Bubble */}
-          <div
-            className={cn(
-              "relative rounded-2xl transition-all duration-200",
-              message.fileUrl && (message.fileType?.startsWith("image/") || message.fileType?.startsWith("video/"))
-                ? "p-1.5"
-                : message.fileType?.startsWith("audio/")
-                ? "p-2"
-                : "px-4 py-2.5",
-              isSent
-                ? "bg-primary text-primary-foreground rounded-br-md shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35"
-                : "bg-card text-card-foreground rounded-bl-md border border-border shadow-md hover:shadow-lg hover:border-border/80"
+          {/* Message content */}
+          <div className="flex-1 min-w-0">
+            {/* Header: Name + Timestamp (inline, Slack-style) */}
+            {showName && (
+              <div className="flex items-baseline gap-2 mb-1">
+                {/* User name with hover profile card (Slack-style) */}
+                <HoverCard openDelay={500} closeDelay={200}>
+                  <HoverCardTrigger asChild>
+                    <button className="text-[15px] font-bold text-foreground hover:underline cursor-pointer">
+                      {message.senderName}
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent
+                    side="top"
+                    align="start"
+                    className="p-0 w-auto"
+                    sideOffset={8}
+                  >
+                    <UserProfileCard
+                      user={{
+                        id: message.senderId,
+                        name: message.senderName,
+                        avatar: message.senderAvatar,
+                        status: "ONLINE", // You can pass actual status from props
+                      }}
+                    />
+                  </HoverCardContent>
+                </HoverCard>
+                
+                <span className="text-[13px] text-muted-foreground">
+                  {formatMessageTime(message.createdAt)}
+                </span>
+                {message.isPinned && (
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px] flex items-center gap-0.5">
+                    <Pin className="h-2.5 w-2.5" />
+                    Pinned
+                  </Badge>
+                )}
+              </div>
             )}
-          >
-            {/* Reply Button - Show on hover */}
-            {!message.isDeleted && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onReply(message)}
-                      className={cn(
-                        "absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10",
-                        "w-8 h-8 rounded-lg",
-                        "bg-card/90 backdrop-blur-sm",
-                        "shadow-md border border-border",
-                        "hover:scale-110 active:scale-95",
-                        "text-foreground hover:text-primary"
-                      )}
-                    >
-                      <Reply className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Reply</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {/* Message Actions (Edit/Delete) - Show on hover */}
-            {isSent && !message.isDeleted && (
-              <div className={cn(
-                "absolute -right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-              )}>
-                <MessageActions
-                  messageId={message.id}
-                  currentContent={message.content}
-                  isSent={isSent}
-                  isDeleted={message.isDeleted || false}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
+            
+            {/* Timestamp on hover for consecutive messages (Slack-style) */}
+            {!showName && (
+              <div className="flex items-baseline gap-2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[13px] text-muted-foreground">
+                  {formatMessageTime(message.createdAt)}
+                </span>
               </div>
             )}
 
-            {/* Reply Preview */}
+            {/* Reply Preview (if replying to another message) */}
             {message.replyTo && (
-              <div className={cn(
-                "mb-2.5 pl-3 pr-2 py-1.5 border-l-4 rounded-r-md cursor-pointer hover:opacity-90 transition-opacity",
-                isSent
-                  ? "border-primary/30 bg-primary/10 backdrop-blur-sm"
-                  : "border-primary/20 bg-muted/70"
-              )}
-              onClick={() => {
-                // Scroll to original message
-                const originalMessage = document.querySelector(`[data-message-id="${message.replyTo?.id}"]`);
-                if (originalMessage) {
-                  originalMessage.scrollIntoView({ behavior: "smooth", block: "center" });
-                  originalMessage.classList.add("ring-2", "ring-ring", "ring-offset-2");
-                  setTimeout(() => {
-                    originalMessage.classList.remove("ring-2", "ring-ring", "ring-offset-2");
-                  }, 2000);
-                }
-              }}
+              <div 
+                className="mb-2 pl-3 pr-2 py-1.5 border-l-2 border-muted-foreground/30 bg-muted/30 rounded cursor-pointer hover:bg-muted/50 transition-base"
+                data-reply-to-id={message.replyTo.id}
+                onClick={() => {
+                  const originalMessage = document.querySelector(`[data-message-id="${message.replyTo?.id}"]`);
+                  if (originalMessage) {
+                    originalMessage.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }}
               >
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <Reply className={cn(
-                    "w-3 h-3",
-                    isSent ? "text-primary-foreground/80" : "text-primary"
-                  )} />
-                  <p className={cn(
-                    "text-xs font-semibold",
-                    isSent ? "text-primary-foreground/90" : "text-primary"
-                  )}>
+                  <Reply className="w-3 h-3 text-muted-foreground" />
+                  <p className="text-xs font-semibold text-foreground">
                     {message.replyTo.senderName}
                   </p>
                 </div>
-                <p className={cn(
-                  "text-xs line-clamp-2 leading-tight",
-                  isSent ? "text-primary-foreground/80" : "text-foreground"
-                )}>
+                <p className="text-xs text-muted-foreground line-clamp-2">
                   {message.replyTo.content || "Media"}
                 </p>
               </div>
             )}
 
-            {/* File Attachment */}
-            {message.fileUrl && (
-              <div className={cn(
-                message.fileType?.startsWith("image/") || message.fileType?.startsWith("video/") || message.fileType?.startsWith("audio/")
-                  ? "mb-0"
-                  : "mb-2"
-              )}>
-                <FileAttachment
-                  fileUrl={message.fileUrl}
-                  fileName={message.fileName || "File"}
-                  fileSize={message.fileSize || 0}
-                  fileType={message.fileType || "application/octet-stream"}
-                  isSent={isSent}
-                />
-              </div>
-            )}
-
-            {/* Message Content */}
+            {/* Message Content (Slack-style plain text) */}
             {!message.isDeleted && message.content && message.content.trim().length > 0 && (
-              <div className={cn(
-                message.fileUrl && (message.fileType?.startsWith("image/") || message.fileType?.startsWith("video/") || message.fileType?.startsWith("audio/"))
-                  ? "px-3 pb-2 pt-1.5"
-                  : message.replyTo ? "mt-0 pb-0" : "pb-0"
-              )}>
-                <div className={cn(
-                  "text-sm leading-relaxed whitespace-pre-wrap break-words"
-                )}>
-                  {renderFormattedText(
-                    parseFormattedText(sanitizeMessageContent(message.content)),
-                    isSent ? "text-white" : "text-foreground"
-                  )}
-                  {message.isEdited && (
-                    <span className={cn(
-                      "text-[10px] ml-1.5 italic opacity-75",
-                      isSent ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}>
-                      (edited)
-                    </span>
-                  )}
-                </div>
-                
-                {/* Link Preview */}
-                {getFirstUrl(message.content) && (
-                  <LinkPreview
-                    url={getFirstUrl(message.content)!}
-                    isSent={isSent}
-                  />
+              <div className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                {renderFormattedText(
+                  parseFormattedText(sanitizeMessageContent(message.content)),
+                  "text-foreground"
+                )}
+                {message.isEdited && (
+                  <span className="text-[12px] ml-1.5 text-muted-foreground">
+                    (edited)
+                  </span>
                 )}
               </div>
             )}
 
             {/* Deleted Message */}
             {message.isDeleted && (
-              <p className={cn(
-                "text-sm italic opacity-70",
-                isSent ? "text-primary-foreground/80" : "text-muted-foreground"
-              )}>
+              <p className="text-[15px] italic text-muted-foreground">
                 This message was deleted
               </p>
             )}
 
-            {/* Timestamp and Read Receipt - Below message content */}
-            {!message.fileUrl || (!message.fileType?.startsWith("image/") && !message.fileType?.startsWith("video/")) ? (
-              <div className={cn(
-                "flex items-center gap-1.5 -mt-0.5",
-                isSent ? "justify-end" : "justify-start"
-              )}>
-                <p
-                  className={cn(
-                    "text-[10px] font-medium",
-                    isSent
-                      ? "text-primary-foreground/90"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <MessageTime timestamp={message.createdAt} />
-                </p>
-                {isSent && (
-                  <ReadReceipts
-                    isSent={isSent}
-                    isRead={message.isRead || false}
-                    isDelivered={message.isDelivered || false}
-                  />
-                )}
+            {/* File Attachment */}
+            {message.fileUrl && (
+              <div className="mt-2">
+                <FileAttachment
+                  fileUrl={message.fileUrl}
+                  fileName={message.fileName || "File"}
+                  fileSize={message.fileSize || 0}
+                  fileType={message.fileType || "application/octet-stream"}
+                  isSent={false} // Always use received style in flat design
+                />
               </div>
-            ) : (
-              /* For media messages, overlay timestamp and receipt */
-              <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm text-white flex items-center gap-1.5">
-                <p className="text-[10px] font-medium text-white/90">
-                  <MessageTime timestamp={message.createdAt} />
-                </p>
-                {isSent && (
-                  <ReadReceipts
-                    isSent={isSent}
-                    isRead={message.isRead || false}
-                    isDelivered={message.isDelivered || false}
-                  />
-                )}
+            )}
+
+            {/* Link Preview */}
+            {getFirstUrl(message.content) && (
+              <div className="mt-2">
+                <LinkPreview
+                  url={getFirstUrl(message.content)!}
+                  isSent={false}
+                />
+              </div>
+            )}
+
+            {/* Reactions */}
+            {message.reactions && Array.isArray(message.reactions) && message.reactions.length > 0 && (
+              <div className="mt-2">
+                <MessageReactions
+                  reactions={message.reactions}
+                  currentUserId={currentUserId}
+                  messageId={message.id}
+                  roomId={roomId}
+                  onReactionChange={onReactionChange}
+                />
+              </div>
+            )}
+
+            {/* Reply Count Badge */}
+            {message.replyCount && message.replyCount > 0 && (
+              <div className="mt-2">
+                <ReplyCountBadge 
+                  count={message.replyCount} 
+                  messageId={message.id}
+                  roomId={roomId}
+                />
+              </div>
+            )}
+
+            {/* Read Receipts (for sent messages only) */}
+            {isSent && !isConsecutive && (
+              <div className="mt-1">
+                <ReadReceipts
+                  isSent={isSent}
+                  isRead={message.isRead || false}
+                  isDelivered={message.isDelivered || false}
+                />
               </div>
             )}
           </div>
-        </div>
 
-        {/* Message Reactions - Positioned below bubble */}
-        {!message.isDeleted && (
-          <div className={cn(
-            "mt-1.5",
-            isSent ? "flex justify-end" : "flex justify-start"
-          )}>
-            <MessageReactions
-              messageId={message.id}
-              roomId={roomId}
-              reactions={message.reactions || {}}
-              currentUserId={currentUserId}
-              isSent={isSent}
-              onReactionChange={onReactionChange}
-            />
-          </div>
-        )}
+          {/* Hover Actions (right side, Slack-style) */}
+          {!message.isDeleted && isHovered && (
+            <div className="absolute top-0 right-4 -mt-2">
+              <MessageHoverActions
+                message={message}
+                isSent={isSent}
+                currentUserId={currentUserId}
+                onReply={onReply}
+                onReact={onReactionChange}
+                onPin={onPin}
+                onUnpin={onUnpin}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onOpenContextMenu={contextMenuHandler || undefined}
+              />
+            </div>
+          )}
+        </div>
       </div>
-    </motion.div>
     </ChatRoomContextMenu>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison function for React.memo
-  // Only re-render if these props change
-  return (
-    prevProps.message.id === nextProps.message.id &&
-    prevProps.message.content === nextProps.message.content &&
-    prevProps.message.isDeleted === nextProps.message.isDeleted &&
-    prevProps.message.isEdited === nextProps.message.isEdited &&
-    prevProps.message.reactions === nextProps.message.reactions &&
-    prevProps.message.isRead === nextProps.message.isRead &&
-    prevProps.message.isDelivered === nextProps.message.isDelivered &&
-    prevProps.showAvatar === nextProps.showAvatar &&
-    prevProps.showName === nextProps.showName &&
-    prevProps.isConsecutive === nextProps.isConsecutive
   );
 });

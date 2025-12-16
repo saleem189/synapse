@@ -27,6 +27,8 @@ export interface ServerToClientEvents {
   "message-updated": (data: { messageId: string; content: string; updatedAt: string }) => void;
   "message-deleted": (data: { messageId: string }) => void;
   "reaction-updated": (data: { messageId: string; reactions: Record<string, Array<{ id: string; name: string; avatar: string | null }>> }) => void;
+  "message-pinned": (data: { messageId: string; roomId: string; pinnedById: string; pinnedAt: string }) => void;
+  "message-unpinned": (data: { messageId: string; roomId: string }) => void;
   // Video call events
   "incoming-call": (data: { callId: string; from: string; fromName: string; fromAvatar?: string | null; roomId: string; callType: 'video' | 'audio' }) => void;
   "call-accepted": (data: { callId: string; roomId: string; participantId: string }) => void;

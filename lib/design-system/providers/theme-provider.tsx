@@ -18,54 +18,54 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'system';
-    return (localStorage.getItem('theme') as Theme) || 'system';
-  });
+  // This provider manages CSS variables only - next-themes handles the dark class
+  // No state needed, just apply CSS variables based on current theme
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-
-  // Apply theme on mount and when theme changes
+  // Listen to next-themes dark class changes and apply our CSS variables
   useEffect(() => {
-    const resolved = applyTheme(theme);
-    setResolvedTheme(resolved);
-    
-    // Save to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', theme);
-    }
-  }, [theme]);
-
-  // Listen to system theme changes when theme is 'system'
-  useEffect(() => {
-    if (theme !== 'system' || typeof window === 'undefined') return;
-    
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      const resolved = applyTheme('system');
+    const applyCurrentTheme = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      const theme: Theme = isDark ? 'dark' : 'light';
+      const resolved = applyTheme(theme);
       setResolvedTheme(resolved);
     };
-    
-    // Check if addEventListener is supported (modern browsers)
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    } else {
-      // Fallback for older browsers
-      mediaQuery.addListener(handleChange);
-      return () => mediaQuery.removeListener(handleChange);
-    }
-  }, [theme]);
 
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-  };
+    // Apply immediately
+    applyCurrentTheme();
 
+    // Watch for class changes (next-themes updates)
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          // Only apply if dark class actually changed
+          const oldHadDark = (mutation.oldValue || '').includes('dark');
+          const newHasDark = document.documentElement.classList.contains('dark');
+          
+          if (oldHadDark !== newHasDark) {
+            applyCurrentTheme();
+          }
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+      attributeOldValue: true, // Track old value to compare
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Note: theme management is delegated to next-themes
+  // This provider only exposes resolvedTheme for components that need it
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider value={{ 
+      theme: resolvedTheme, // Always returns the current resolved theme
+      setTheme: () => {}, // No-op, use next-themes' useTheme instead
+      resolvedTheme 
+    }}>
       {children}
     </ThemeContext.Provider>
   );

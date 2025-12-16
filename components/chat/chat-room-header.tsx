@@ -5,16 +5,16 @@
 
 "use client";
 
-import { Hash, Phone, Video, Info, Search, Pin } from "lucide-react";
+import { Hash, Phone, Video, Info, Search, Pin, Menu } from "lucide-react";
 import { toast } from "sonner";
-import { cn, getInitials } from "@/lib/utils";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { RoomMenu } from "./room-menu";
 import { useVideoCallContext } from "@/features/video-call";
+import { DensityModeToggle } from "@/features/density-mode";
 
 interface ChatRoomHeaderProps {
   roomName: string;
@@ -80,47 +80,47 @@ export function ChatRoomHeader({
   };
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 bg-background border-b border-border">
+    <header className="flex items-center justify-between px-5 py-3 bg-background border-b border-border shadow-sm transition-base">
       <div className="flex items-center gap-3">
-        {/* Sidebar Trigger for Mobile */}
-        <SidebarTrigger className="lg:hidden" />
+        {/* Mobile Menu Button (Placeholder for sidebar toggle) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden h-9 w-9"
+          aria-label="Toggle sidebar"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
         
         {/* Room Avatar */}
-        <Avatar className={cn(
-          "w-10 h-10",
-          isGroup
-            ? "bg-gradient-to-br from-accent-400 to-pink-500"
-            : "bg-gradient-to-br from-primary to-accent"
-        )}>
-          <AvatarImage src={roomData?.avatar || undefined} alt={roomName} />
-          <AvatarFallback className={cn(
-            "text-white font-semibold",
-            isGroup
-              ? "bg-gradient-to-br from-accent-400 to-pink-500"
-              : "bg-gradient-to-br from-primary to-accent"
-          )}>
-            {isGroup ? <Hash className="w-5 h-5" /> : getInitials(roomName)}
-          </AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          src={roomData?.avatar}
+          name={roomName}
+          isGroup={isGroup}
+          size="md"
+        />
 
         {/* Room Info */}
-        <div>
-          <h2 className="font-semibold text-foreground">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[15px] font-bold text-foreground truncate">
             {roomName}
           </h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground truncate">
             {isGroup
               ? `${participants.length} members`
               : onlineParticipants.length > 0
                 ? "Online"
                 : "Offline"}
+            {isGroup && onlineParticipants.length > 0 && (
+              <span className="ml-2 text-success font-medium">{onlineParticipants.length} online</span>
+            )}
           </p>
         </div>
       </div>
 
       {/* Actions */}
       <TooltipProvider>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {/* Pinned Messages Toggle */}
           {onTogglePinnedMessages && (
             <Tooltip>
@@ -212,6 +212,15 @@ export function ChatRoomHeader({
             onViewMembers={onToggleInfo}
             onRoomSettings={onRoomSettings}
           />
+          {/* Density Mode Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DensityModeToggle />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>View density</TooltipContent>
+          </Tooltip>
         </div>
       </TooltipProvider>
     </header>

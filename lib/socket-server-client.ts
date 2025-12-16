@@ -338,6 +338,88 @@ export async function broadcastReactionUpdate(
 }
 
 /**
+ * Broadcast a message pin/unpin update to all users in a room
+ * This is called by API routes after pinning or unpinning a message
+ */
+export async function broadcastPinUpdate(
+  roomId: string,
+  messageId: string,
+  isPinned: boolean,
+  pinnedById: string,
+  pinnedAt: string | null
+): Promise<void> {
+  try {
+    const socket = await getServerSocket();
+    const logger = await getLogger();
+    
+    // Wait for connection if not connected
+    if (!socket.connected) {
+      logger.log('Waiting for server socket connection', {
+        component: 'SocketServerClient',
+      });
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("Socket connection timeout"));
+        }, 5000);
+
+        if (socket.connected) {
+          clearTimeout(timeout);
+          resolve();
+          return;
+        }
+
+        socket.once("connect", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+
+        socket.once("connect_error", (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      });
+    }
+
+    // Wait a bit more to ensure server handlers are fully set up
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Log before emitting (development only for verbose logging)
+    if (process.env.NODE_ENV === 'development') {
+      logger.log('API emitting pin update to socket server', {
+        component: 'SocketServerClient',
+        messageId,
+        roomId,
+        isPinned,
+        socketId: socket.id,
+        connected: socket.connected,
+      });
+    }
+    
+    // Emit the appropriate event to the socket server
+    const event = isPinned ? "message-pinned" : "message-unpinned";
+    socket.emit(event, {
+      messageId,
+      roomId,
+      pinnedById,
+      pinnedAt,
+    });
+  } catch (error) {
+    try {
+      const logger = await getLogger();
+      logger.error('Failed to broadcast pin update via socket', error, {
+        component: 'SocketServerClient',
+        messageId,
+        roomId,
+        isPinned,
+      });
+    } catch {
+      console.error('[SocketServerClient] Failed to broadcast pin update via socket:', error);
+    }
+    // Don't throw - pin was saved, just socket broadcast failed
+  }
+}
+
+/**
  * Disconnect the server socket client
  */
 export function disconnectServerSocket(): void {

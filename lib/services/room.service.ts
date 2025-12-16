@@ -39,6 +39,9 @@ export class RoomService {
     id: string;
     name: string;
     isGroup: boolean;
+    isFavorite: boolean;
+    isMuted: boolean; // Added
+    mutedUntil: string | null; // Added
     lastMessage?: {
       content: string;
       createdAt: string;
@@ -55,6 +58,12 @@ export class RoomService {
 
     return rooms.map((room) => {
       const lastMessage = room.messages?.[0];
+      
+      // Find current user's participant record to get isFavorite and isMuted
+      const currentUserParticipant = room.participants.find((p) => p.user.id === userId);
+      const isFavorite = currentUserParticipant?.isFavorite || false;
+      const isMuted = currentUserParticipant?.isMuted || false;
+      const mutedUntil = currentUserParticipant?.mutedUntil?.toISOString() || null;
       
       // Handle createdAt - it might be a Date (from DB) or string (from cache)
       let createdAtISO: string | undefined;
@@ -79,6 +88,9 @@ export class RoomService {
         id: room.id,
         name: room.name,
         isGroup: room.isGroup,
+        isFavorite,
+        isMuted, // Added
+        mutedUntil, // Added
         lastMessage: lastMessage?.sender && createdAtISO
           ? {
               content: lastMessage.content,

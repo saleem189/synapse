@@ -115,17 +115,17 @@ export default function RegisterPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
         <div className="fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-surface-50 via-primary-50/30 to-accent-50/20 dark:from-surface-950 dark:via-surface-900 dark:to-surface-950" />
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-muted/20 to-background" />
         </div>
-        <Card className="text-center animate-scale-in">
-          <CardContent className="pt-8 pb-8">
-            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-green-500" />
+        <Card variant="elevated" className="text-center scale-in shadow-xl">
+          <CardContent className="surface-padding-xl">
+            <div className="w-16 h-16 rounded-full bg-[hsl(var(--success))]/10 border-2 border-[hsl(var(--success))] flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-8 h-8 text-[hsl(var(--success))]" />
             </div>
-            <CardTitle className="text-2xl mb-2">Account Created!</CardTitle>
-            <CardDescription className="text-base">
+            <CardTitle className="mb-3">Account Created!</CardTitle>
+            <CardDescription>
               Redirecting you to login...
             </CardDescription>
           </CardContent>
@@ -135,21 +135,19 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Background */}
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Background - Minimal, clean design */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-surface-50 via-primary-50/30 to-accent-50/20 dark:from-surface-950 dark:via-surface-900 dark:to-surface-950" />
-        <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-accent-400/20 dark:bg-accent-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-1/4 w-[600px] h-[600px] bg-primary-400/20 dark:bg-primary-500/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-muted/20 to-background" />
       </div>
 
       {/* Header */}
-      <header className="p-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-            <MessageCircle className="w-5 h-5 text-white" />
+      <header className="p-6 flex items-center justify-between border-b border-border">
+        <Link href="/" className="flex items-center gap-3 transition-base hover-scale">
+          <div className="w-12 h-12 rounded-lg bg-[hsl(var(--brand-primary))] flex items-center justify-center shadow-md">
+            <MessageCircle className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-surface-900 dark:text-white">
+          <span className="text-2xl font-black text-foreground">
             Synapse
           </span>
         </Link>
@@ -158,16 +156,16 @@ export default function RegisterPage() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md animate-slide-up">
+        <div className="w-full max-w-md slide-in-up">
           {/* Card */}
-          <Card className="shadow-xl shadow-surface-900/5 dark:shadow-black/20">
-            <CardHeader className="text-center pb-6">
-              <CardTitle className="text-2xl mb-2">Create Account</CardTitle>
-              <CardDescription className="text-base">
+          <Card variant="elevated" className="shadow-xl">
+            <CardHeader className="text-center space-y-3 pb-8">
+              <CardTitle>Create Account</CardTitle>
+              <CardDescription>
                 Join Synapse and start chatting
               </CardDescription>
             </CardHeader>
-            <CardContent className="px-8 pb-8">
+            <CardContent className="surface-padding-lg pb-8">
 
             {/* API Error Message */}
             {apiError && (
@@ -180,14 +178,16 @@ export default function RegisterPage() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name Field */}
               <div className="space-y-2">
-                <Label htmlFor="name">
+                <Label htmlFor="name" className="text-sm font-medium">
                   Full Name
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400 z-10" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                  </div>
                   <Input
                     id="name"
                     name="name"
@@ -196,21 +196,29 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="John Doe"
                     disabled={isLoading}
-                    className={cn("pl-12", errors.name && "border-destructive")}
+                    className={cn(
+                      "pl-10 h-11 transition-all",
+                      errors.name && "border-destructive focus-visible:ring-destructive"
+                    )}
                   />
                 </div>
                 {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name}</p>
+                  <p className="text-xs text-destructive font-medium flex items-center gap-1.5 mt-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.name}
+                  </p>
                 )}
               </div>
 
               {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="email">
+                <Label htmlFor="email" className="text-sm font-medium">
                   Email Address
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400 z-10" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                  </div>
                   <Input
                     id="email"
                     name="email"
@@ -219,21 +227,29 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="you@example.com"
                     disabled={isLoading}
-                    className={cn("pl-12", errors.email && "border-destructive")}
+                    className={cn(
+                      "pl-10 h-11 transition-all",
+                      errors.email && "border-destructive focus-visible:ring-destructive"
+                    )}
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email}</p>
+                  <p className="text-xs text-destructive font-medium flex items-center gap-1.5 mt-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.email}
+                  </p>
                 )}
               </div>
 
               {/* Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="password">
+                <Label htmlFor="password" className="text-sm font-medium">
                   Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400 z-10" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  </div>
                   <Input
                     id="password"
                     name="password"
@@ -242,12 +258,15 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className={cn("pl-12", errors.password && "border-destructive")}
+                    className={cn(
+                      "pl-10 h-11 transition-all",
+                      errors.password && "border-destructive focus-visible:ring-destructive"
+                    )}
                   />
                 </div>
                 {/* Password Strength Indicator */}
                 {formData.password && (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 mt-2">
                     <div className="flex gap-1">
                       {[...Array(6)].map((_, i) => (
                         <div
@@ -261,23 +280,28 @@ export default function RegisterPage() {
                         />
                       ))}
                     </div>
-                    <p className="text-xs text-surface-500">
+                    <p className="text-xs text-muted-foreground">
                       Password strength: {strengthLabels[passwordStrength - 1] || "Too Short"}
                     </p>
                   </div>
                 )}
                 {errors.password && (
-                  <p className="text-sm text-red-500">{errors.password}</p>
+                  <p className="text-xs text-destructive font-medium flex items-center gap-1.5 mt-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.password}
+                  </p>
                 )}
               </div>
 
               {/* Confirm Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium">
                   Confirm Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400 z-10" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  </div>
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -286,11 +310,17 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className={cn("pl-12", errors.confirmPassword && "border-destructive")}
+                    className={cn(
+                      "pl-10 h-11 transition-all",
+                      errors.confirmPassword && "border-destructive focus-visible:ring-destructive"
+                    )}
                   />
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-sm text-red-500">{errors.confirmPassword}</p>
+                  <p className="text-xs text-destructive font-medium flex items-center gap-1.5 mt-1.5">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.confirmPassword}
+                  </p>
                 )}
               </div>
 
@@ -299,11 +329,11 @@ export default function RegisterPage() {
                 type="submit"
                 disabled={isLoading}
                 variant="default"
-                className="w-full py-3.5"
+                className="w-full h-11 font-medium"
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Creating Account...
                   </>
                 ) : (

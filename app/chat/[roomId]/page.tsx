@@ -3,6 +3,7 @@
 // ================================
 // Individual chat room with messages and input
 
+import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
@@ -10,6 +11,7 @@ import { ChatRoom } from "@/components/chat/chat-room";
 import { toISOString } from "@/lib/utils/date-helpers";
 import type { IRoomService } from "@/lib/di/service-interfaces";
 import type { MessageType } from "@/lib/types/message.types";
+import { Loader2 } from "lucide-react";
 
 interface ChatRoomPageProps {
   params: Promise<{
@@ -126,32 +128,40 @@ export default async function ChatRoomPage({ params }: ChatRoomPageProps) {
   }
 
   return (
-    <ChatRoom
-      roomId={room.id}
-      roomName={displayName}
-      isGroup={room.isGroup}
-      participants={room.participants.map((p: {
-        user: { id: string; name: string; avatar: string | null; status: string; lastSeen?: Date | string };
-        role: string;
-      }) => ({
-        id: p.user.id,
-        name: p.user.name,
-        avatar: p.user.avatar,
-        status: p.user.status,
-        lastSeen: toISOString(p.user.lastSeen),
-        role: p.role, // "admin" or "member" in RoomParticipant
-        isOwner: room.owner?.id === p.user.id,
-      }))}
-      roomOwnerId={room.owner.id}
-      roomData={{
-        id: room.id,
-        name: room.name,
-        description: room.description,
-        avatar: room.avatar,
-        isGroup: room.isGroup,
-      }}
-      initialMessages={messages}
-    />
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <ChatRoom
+        roomId={room.id}
+        roomName={displayName}
+        isGroup={room.isGroup}
+        participants={room.participants.map((p: {
+          user: { id: string; name: string; avatar: string | null; status: string; lastSeen?: Date | string };
+          role: string;
+        }) => ({
+          id: p.user.id,
+          name: p.user.name,
+          avatar: p.user.avatar,
+          status: p.user.status,
+          lastSeen: toISOString(p.user.lastSeen),
+          role: p.role, // "admin" or "member" in RoomParticipant
+          isOwner: room.owner?.id === p.user.id,
+        }))}
+        roomOwnerId={room.owner.id}
+        roomData={{
+          id: room.id,
+          name: room.name,
+          description: room.description,
+          avatar: room.avatar,
+          isGroup: room.isGroup,
+        }}
+        initialMessages={messages}
+      />
+    </Suspense>
   );
 }
 

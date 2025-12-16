@@ -50,9 +50,13 @@ export interface Message {
   fileType?: string | null;
   isEdited?: boolean;
   isDeleted?: boolean;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  pinnedById?: string | null;
   replyToId?: string | null;
   status?: MessageStatus;
   replyTo?: ReplyToMessage | null;
+  replyCount?: number; // Number of replies to this message
   reactions?: MessageReactions;
   isRead?: boolean;
   isDelivered?: boolean;
@@ -79,8 +83,12 @@ export interface MessagePayload {
   fileType?: string;
   isEdited?: boolean;
   isDeleted?: boolean;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  pinnedById?: string | null;
   replyToId?: string | null;
   replyTo?: ReplyToMessage | null;
+  replyCount?: number; // Number of replies to this message
   reactions?: MessageReactions;
   isRead?: boolean;
   createdAt?: string;

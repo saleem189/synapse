@@ -12,7 +12,7 @@ import { cn, getInitials } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,12 +151,11 @@ export function RoomMembersPanel({
                   <HoverCardTrigger asChild>
                     <button type="button" className="flex items-center gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg w-full text-left">
                       <div className="relative">
-                        <Avatar className="w-10 h-10 bg-gradient-to-br from-primary to-accent">
-                          <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
-                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-sm font-semibold">
-                            {getInitials(participant.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          name={participant.name}
+                          src={participant.avatar}
+                          size="md"
+                        />
                         {participant.isOwner && (
                           <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center border-2 border-background">
                             <Crown className="w-3 h-3 text-white" />
@@ -178,12 +177,11 @@ export function RoomMembersPanel({
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80" side="right" align="start">
                     <div className="flex justify-between space-x-4">
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
-                          {getInitials(participant.name)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        name={participant.name}
+                        src={participant.avatar}
+                        size="lg"
+                      />
                       <div className="space-y-1 flex-1">
                         <h4 className="text-sm font-semibold flex items-center gap-2">
                           {participant.name}
@@ -246,12 +244,11 @@ export function RoomMembersPanel({
                 <HoverCard key={`hover-member-${participant.id}`} openDelay={200} closeDelay={100}>
                   <HoverCardTrigger asChild>
                     <button type="button" className="flex items-center gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg w-full text-left">
-                      <Avatar className="w-10 h-10 bg-gradient-to-br from-primary to-accent">
-                        <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-sm font-semibold">
-                          {getInitials(participant.name)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        name={participant.name}
+                        src={participant.avatar}
+                        size="md"
+                      />
                       <div>
                         <p className="font-medium text-sm text-foreground">
                           {participant.name}
@@ -264,12 +261,11 @@ export function RoomMembersPanel({
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80" side="right" align="start">
                     <div className="flex justify-between space-x-4">
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage src={participant.avatar || undefined} alt={participant.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
-                          {getInitials(participant.name)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        name={participant.name}
+                        src={participant.avatar}
+                        size="lg"
+                      />
                       <div className="space-y-1 flex-1">
                         <h4 className="text-sm font-semibold">{participant.name}</h4>
                         <p className="text-xs text-muted-foreground">

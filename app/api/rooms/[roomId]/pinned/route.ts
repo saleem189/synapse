@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { z } from 'zod';
+import { handleError } from '@/lib/errors/error-handler';
+
+// Zod schema for params validation (Security Rule: Input Validation)
+const getPinnedMessagesSchema = z.object({
+  roomId: z.string().cuid('Invalid room ID format'),
+});
 
 // GET /api/rooms/:roomId/pinned - Get all pinned messages
 export async function GET(
   req: NextRequest,
-  { params }: { params: { roomId: string } }
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const roomId = params.roomId;
+    // Validate params (Security Rule: Input Validation with Zod)
+    const { roomId } = getPinnedMessagesSchema.parse(await params);
 
     // Check room access
     const participant = await prisma.roomParticipant.findUnique({
@@ -47,11 +56,8 @@ export async function GET(
 
     return NextResponse.json(pinned);
   } catch (error) {
-    console.error('Error fetching pinned messages:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch pinned messages' },
-      { status: 500 }
-    );
+    console.error('[API /pinned] Error fetching pinned messages:', error);
+    return handleError(error);
   }
 }
 

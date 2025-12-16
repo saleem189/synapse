@@ -14,6 +14,8 @@ import { cn, debounce } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { EmojiPicker } from "./emoji-picker";
 import { VoiceRecorder } from "./voice-recorder";
+import { FormattingToolbar, applyFormatting, type FormatType } from "./formatting-toolbar";
+import { MessagePreview } from "./message-preview";
 import { useFileUpload } from "@/hooks";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,7 @@ export function MessageInput({
     fileType: string;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isTypingRef = useRef(false);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -200,6 +203,25 @@ export function MessageInput({
     const textarea = textareaRef.current;
     const cursorPos = textarea?.selectionStart || 0;
 
+    // Handle formatting shortcuts
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      if (e.key === "b") {
+        e.preventDefault();
+        handleFormat("bold");
+        return;
+      }
+      if (e.key === "i") {
+        e.preventDefault();
+        handleFormat("italic");
+        return;
+      }
+      if (e.key === "k") {
+        e.preventDefault();
+        handleFormat("link");
+        return;
+      }
+    }
+
     // Handle mention keyboard navigation first
     if (mentionsOpen) {
       const result = handleMentionKeyDown(e, message, cursorPos);
@@ -254,6 +276,38 @@ export function MessageInput({
         textarea.focus();
         textarea.setSelectionRange(start + emoji.length, start + emoji.length);
       }, 0);
+    }
+  };
+
+  // Handle formatting
+  const handleFormat = (type: FormatType) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    try {
+      // IMPORTANT: Use the actual textarea value, not the message state
+      // This ensures formatting is applied to what the user sees
+      const currentValue = textarea.value;
+      const { newValue, cursorPos } = applyFormatting(type, textarea, currentValue);
+      
+      // Update the underlying message state
+      // Note: This works correctly because we're formatting the display value
+      // and mentions are preserved in their display format
+      setMessage(newValue);
+
+      // Refocus textarea with cursor at correct position
+      // Use requestAnimationFrame for smoother updates
+      requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(cursorPos, cursorPos);
+      });
+    } catch (error) {
+      logger.error("Error applying formatting", error instanceof Error ? error : new Error(String(error)), {
+        component: 'MessageInput',
+        action: 'handleFormat',
+        formatType: type,
+      });
+      toast.error("Failed to apply formatting");
     }
   };
 
@@ -327,18 +381,8 @@ export function MessageInput({
   const isVideo = selectedFile?.fileType.startsWith("video/");
 
   return (
-    <div
-      ref={dropZoneRef}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      className={cn(
-        "relative px-4 py-3 bg-background border-t border-border",
-        isDragging && "bg-primary/10 border-primary/30"
-      )}
-    >
-      {/* Reply Preview */}
+    <div className="relative px-4 py-3 bg-background">
+      {/* Reply Preview - Outside main container */}
       {replyTo && (
         <div className="mb-2 px-3 py-2 rounded-lg bg-primary/10 border-l-3 border-primary flex items-start gap-2">
           <Reply className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
@@ -364,18 +408,38 @@ export function MessageInput({
         </div>
       )}
 
-      {/* Drag overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-50 pointer-events-none">
-          <div className="text-center">
-            <Paperclip className="w-12 h-12 text-primary mx-auto mb-2" />
-            <p className="text-sm font-medium text-primary">Drop file to upload</p>
-          </div>
-        </div>
-      )}
+      {/* UNIFIED INPUT CONTAINER - Like Slack */}
+      <div
+        ref={dropZoneRef}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className={cn(
+          "relative rounded-lg border border-border bg-background overflow-hidden",
+          "transition-all duration-200",
+          isDragging && "border-primary bg-primary/5 scale-[0.99]"
+        )}
+      >
+        {/* Formatting Toolbar - Top of container, always visible */}
+        <FormattingToolbar 
+          onFormat={handleFormat}
+          showPreview={showPreview}
+          onTogglePreview={() => setShowPreview(!showPreview)}
+        />
 
-      {/* File Preview - WhatsApp-style */}
-      {selectedFile && (
+        {/* Drag overlay - Inside container */}
+        {isDragging && (
+          <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary flex items-center justify-center z-50 pointer-events-none">
+            <div className="text-center">
+              <Paperclip className="w-12 h-12 text-primary mx-auto mb-2" />
+              <p className="text-sm font-medium text-primary">Drop file to upload</p>
+            </div>
+          </div>
+        )}
+
+        {/* File Preview - Inside container */}
+        {selectedFile && (
         <div className="mb-2 relative">
           {isImage ? (
             <div className="relative inline-block rounded-lg overflow-hidden border border-border max-w-xs shadow-sm">
@@ -443,129 +507,135 @@ export function MessageInput({
         </div>
       )}
 
-      {/* Uploading indicator */}
-      {uploadingFile && (
-        <div className="mb-2 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-3">
-          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-primary">Uploading file...</p>
-        </div>
-      )}
-
-      <div className="flex items-end gap-2">
-        {/* Voice Recorder */}
-        <VoiceRecorder
-          onRecordingComplete={async (audioBlob, duration) => {
-            try {
-              // Create file from blob
-              const fileName = `voice_${Date.now()}.${audioBlob.type.includes('webm') ? 'webm' : 'mp4'}`;
-              const file = new File([audioBlob], fileName, { type: audioBlob.type });
-
-              // Upload audio file using the hook (it handles uploading state automatically)
-              const result = await upload(file);
-
-              if (result) {
-                // Send voice message
-                onSendMessage("", {
-                  url: result.url,
-                  fileName: `Voice message (${Math.floor(duration)}s)`,
-                  fileSize: result.fileSize,
-                  fileType: "audio/webm",
-                });
-              } else {
-                // Error is already handled by the upload function
-                toast.error("Failed to upload voice message");
-              }
-            } catch (error) {
-              logger.error("Error uploading voice message", error instanceof Error ? error : new Error(String(error)), {
-                component: 'MessageInput',
-                action: 'uploadVoiceMessage',
-              });
-              toast.error("An error occurred while uploading the voice message");
-            }
-            // Note: No need to manually set uploading state - upload() handles it
-          }}
-          onCancel={() => {
-            // Cancel recording
-          }}
-        />
-
-        {/* Quick Reply Picker */}
-        <QuickReplyPicker
-          templates={templates}
-          onSelect={handleQuickReplySelect}
-        />
-
-        {/* Attachment Button */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <label className="w-10 h-10 rounded-xl hover:bg-accent hover:text-accent-foreground flex items-center justify-center text-muted-foreground transition-colors flex-shrink-0 cursor-pointer">
-                <input
-                  type="file"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-                />
-                <Paperclip className="w-5 h-5" />
-              </label>
-            </TooltipTrigger>
-            <TooltipContent>Attach file</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        {/* Input Container */}
-        <div className="flex-1 relative">
-          <Textarea
-            ref={textareaRef}
-            value={displayMessage}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onBlur={() => setTimeout(closeMentions, 200)}
-            placeholder="Type a message... (use @ to mention, / for quick replies)"
-            disabled={disabled}
-            rows={1}
-            className={cn(
-              "w-full px-4 py-3 pr-12 rounded-2xl resize-none",
-              "max-h-[150px] scrollbar-hide"
-            )}
-          />
-
-          {/* Mention Suggestions */}
-          {mentionsOpen && filteredUsers.length > 0 && (
-            <MentionSuggestions
-              users={filteredUsers}
-              selectedIndex={mentionSelectedIndex}
-              onSelect={handleMentionSelect}
-              onClose={closeMentions}
-            />
-          )}
-
-          {/* Emoji Picker */}
-          <div className="absolute right-3 bottom-2.5">
-            <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+        {/* Uploading indicator - Inside container */}
+        {uploadingFile && (
+          <div className="px-3 py-2 bg-primary/10 flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-primary">Uploading file...</p>
           </div>
-        </div>
+        )}
 
-        {/* Send Button */}
-        <Button
-          onClick={handleSend}
-          disabled={(!message.trim() && !selectedFile) || disabled || uploadingFile}
-          size="icon"
-          className={cn(
-            "w-10 h-10 rounded-xl flex-shrink-0",
-            (message.trim() || selectedFile) && !uploadingFile
-              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"
-              : ""
-          )}
-          title="Send message"
-        >
-          <Send className="w-5 h-5" />
-        </Button>
+        {/* Main Input Area - Inside container */}
+        {showPreview ? (
+          /* Preview Mode - Show rendered markdown */
+          <MessagePreview content={displayMessage} />
+        ) : (
+          /* Edit Mode - Show textarea */
+          <div className="px-3 pb-2">
+            <div className="relative">
+              <Textarea
+                ref={textareaRef}
+                value={displayMessage}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                onBlur={() => setTimeout(closeMentions, 200)}
+                placeholder="Type a message... (use @ to mention, / for quick replies)"
+                disabled={disabled}
+                rows={1}
+                className={cn(
+                  "w-full px-2 py-2 pr-10 resize-none bg-transparent border-0",
+                  "focus:ring-0 focus:outline-none",
+                  "max-h-[150px] scrollbar-hide",
+                  "placeholder:text-muted-foreground"
+                )}
+              />
+
+              {/* Mention Suggestions */}
+              {mentionsOpen && filteredUsers.length > 0 && (
+                <MentionSuggestions
+                  users={filteredUsers}
+                  selectedIndex={mentionSelectedIndex}
+                  onSelect={handleMentionSelect}
+                  onClose={closeMentions}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom Toolbar - Inside container */}
+        <div className="px-2 pb-2 flex items-center justify-between gap-2">
+          {/* Left actions */}
+          <div className="flex items-center gap-0.5">
+            {/* Attachment Button */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="h-7 w-7 rounded hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    <input
+                      type="file"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+                    />
+                    <Paperclip className="w-4 h-4" />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent side="top">Attach file</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Emoji Picker */}
+            <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+
+            {/* Voice Recorder */}
+            <VoiceRecorder
+              onRecordingComplete={async (audioBlob, duration) => {
+                try {
+                  const fileName = `voice_${Date.now()}.${audioBlob.type.includes('webm') ? 'webm' : 'mp4'}`;
+                  const file = new File([audioBlob], fileName, { type: audioBlob.type });
+                  const result = await upload(file);
+
+                  if (result) {
+                    onSendMessage("", {
+                      url: result.url,
+                      fileName: `Voice message (${Math.floor(duration)}s)`,
+                      fileSize: result.fileSize,
+                      fileType: "audio/webm",
+                    });
+                  } else {
+                    toast.error("Failed to upload voice message");
+                  }
+                } catch (error) {
+                  logger.error("Error uploading voice message", error instanceof Error ? error : new Error(String(error)), {
+                    component: 'MessageInput',
+                    action: 'uploadVoiceMessage',
+                  });
+                  toast.error("An error occurred while uploading the voice message");
+                }
+              }}
+              onCancel={() => {}}
+            />
+
+            {/* Quick Reply Picker */}
+            <QuickReplyPicker
+              templates={templates}
+              onSelect={handleQuickReplySelect}
+            />
+          </div>
+
+          {/* Right action - Send Button */}
+          <Button
+            onClick={handleSend}
+            disabled={(!message.trim() && !selectedFile) || disabled || uploadingFile}
+            size="sm"
+            className={cn(
+              "h-7 px-3 gap-1.5 button-animate",
+              (message.trim() || selectedFile) && !uploadingFile
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : ""
+            )}
+            title="Send message"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">Send</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Helper text */}
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        Press Enter to send, Shift + Enter for new line
+      {/* Helper text - Outside container */}
+      <p className="text-xs text-muted-foreground mt-1.5">
+        <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">Shift</kbd> + <kbd className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">Enter</kbd> to add a new line
       </p>
     </div>
   );

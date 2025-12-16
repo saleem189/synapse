@@ -18,6 +18,7 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { RouteChangeHandler } from "@/components/route-change-handler";
 import { VideoCallProvider, IncomingCallDialog } from "@/features/video-call";
 import { ThemeProvider, StyleProvider } from "@/lib/design-system/providers";
+import { DensityProvider } from "@/features/density-mode";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -38,23 +39,26 @@ export function Providers({ children }: ProvidersProps) {
         <ThemeProvider>
           {/* StyleProvider for visual style (solid/glassmorphic) */}
           <StyleProvider>
-            <ReactQueryProvider>
-              <VideoCallProvider>
-                <KeyboardShortcuts />
-                <RouteChangeHandler />
-                {children}
-                {/* Incoming Call Dialog (shows notification, opens new tab) */}
-                <IncomingCallDialog />
-                <Toaster 
-                  position="top-right" 
-                  richColors 
-                  closeButton
-                  toastOptions={{
-                    duration: 4000,
-                  }}
-                />
-              </VideoCallProvider>
-            </ReactQueryProvider>
+            {/* DensityProvider for compact/comfortable view modes */}
+            <DensityProvider>
+              <ReactQueryProvider>
+                <VideoCallProvider>
+                  <KeyboardShortcuts />
+                  <RouteChangeHandler />
+                  {children}
+                  {/* Incoming Call Dialog (shows notification, opens new tab) */}
+                  <IncomingCallDialog />
+                  <Toaster 
+                    position="top-right" 
+                    richColors 
+                    closeButton
+                    toastOptions={{
+                      duration: 4000,
+                    }}
+                  />
+                </VideoCallProvider>
+              </ReactQueryProvider>
+            </DensityProvider>
           </StyleProvider>
         </ThemeProvider>
       </NextThemesProvider>

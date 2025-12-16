@@ -10,4 +10,4 @@ export type { PinnedMessage, PinnedMessagesResponse, PinMessagePayload } from '.
 export { MAX_PINS_PER_ROOM } from './types';
 
 // Components
-export { PinnedMessagesPanel } from './pinned-messages-panel';
+export { PinnedMessagesPanel } from './components/pinned-messages-panel';

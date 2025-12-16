@@ -21,22 +21,23 @@ import {
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { cn, debounce, getInitials } from "@/lib/utils";
+import { cn, debounce } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 // Command components no longer needed here (moved to ChatRoomSearchDialog)
-import { MessageInput } from "./message-input";
+import { WYSIWYGInput } from "./wysiwyg-input";
 import { TypingIndicator } from "./typing-indicator";
 import { RoomMenu } from "./room-menu";
 import { RoomMembersPanel } from "./room-members-panel";
 import { ChatRoomHeader } from "./chat-room-header";
 import { MessageItem } from "./message-item";
 import { ChatRoomSearchDialog } from "./chat-room-search-dialog";
-import { PinnedMessagesPanel } from "./pinned-messages-panel";
+import { PinnedMessagesPanel } from "@/features/pinned-messages";
+import { ContextualSidebar, useContextualSidebar } from "@/features/contextual-sidebar";
 import dynamic from "next/dynamic";
 
 // Lazy load heavy modals for better initial load performance
@@ -61,7 +62,7 @@ import { createMessageFromPayload } from "@/lib/utils/message-helpers";
 import type { Message, MessageReactions } from "@/lib/types/message.types";
 import { VirtualizedMessageList } from "./virtualized-message-list";
 // Features
-import { PinnedMessagesPanel, type MentionableUser } from "@/features";
+import { type MentionableUser } from "@/features";
 import { type MessagePayload } from "@/lib/socket";
 
 const EMPTY_MESSAGES: MessagePayload[] = [];
@@ -800,22 +801,32 @@ export function ChatRoom({
     }
 
     // Pin/Unpin event listeners
-    socket.on("message:pinned", (data: { messageId: string; roomId: string; pinnedBy: any }) => {
+    socket.on("message-pinned", (data: { messageId: string; roomId: string; pinnedById: string; pinnedAt: string }) => {
       if (data.roomId === roomId) {
         logger.log("📌 Message pinned:", data.messageId);
+        // Update message in store immediately for instant visual feedback
+        updateMessage(roomId, data.messageId, { 
+          isPinned: true, 
+          pinnedAt: data.pinnedAt, 
+          pinnedById: data.pinnedById 
+        } as any);
         // Invalidate queries to refetch
         queryClient.invalidateQueries({ queryKey: ['pinned-count', roomId] });
         queryClient.invalidateQueries({ queryKey: ['pinned-messages', roomId] });
         // Show toast notification
-        if (data.pinnedBy?.name) {
-          toast.info(`${data.pinnedBy.name} pinned a message`);
-        }
+        toast.info("A message was pinned");
       }
     });
 
-    socket.on("message:unpinned", (data: { messageId: string; roomId: string }) => {
+    socket.on("message-unpinned", (data: { messageId: string; roomId: string }) => {
       if (data.roomId === roomId) {
         logger.log("📌 Message unpinned:", data.messageId);
+        // Update message in store immediately for instant visual feedback
+        updateMessage(roomId, data.messageId, { 
+          isPinned: false, 
+          pinnedAt: null, 
+          pinnedById: null 
+        } as any);
         // Invalidate queries to refetch
         queryClient.invalidateQueries({ queryKey: ['pinned-count', roomId] });
         queryClient.invalidateQueries({ queryKey: ['pinned-messages', roomId] });
@@ -846,8 +857,8 @@ export function ChatRoom({
       socket.off("online-users");
       socket.off("user-online");
       socket.off("user-offline");
-      socket.off("message:pinned");
-      socket.off("message:unpinned");
+      socket.off("message-pinned");
+      socket.off("message-unpinned");
     };
   }, [roomId, currentUserId, socket, isConnected]); // Only roomId and currentUserId in dependencies - handlers use refs for other values
 
@@ -998,6 +1009,9 @@ export function ChatRoom({
     }, {} as Record<string, Message[]>);
   }, [displayMessages]);
 
+  // Contextual sidebar state (MUST be before early return)
+  const { isOpen: isContextualSidebarOpen } = useContextualSidebar();
+
   // Early return after ALL hooks are called
   if (!currentUser) {
     return (
@@ -1020,23 +1034,28 @@ export function ChatRoom({
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background">
-      {/* Header */}
-      <ChatRoomHeader
-        roomName={roomName}
-        isGroup={isGroup}
-        participants={participants}
-        roomData={roomData}
-        isRoomAdmin={isRoomAdmin || false}
-        showSearch={showSearch}
-        showInfo={isInfoPanelOpen}
-        showPinnedMessages={showPinnedMessages}
-        pinnedMessagesCount={pinnedCount}
-        onToggleSearch={() => setShowSearch(!showSearch)}
-        onToggleInfo={toggleInfoPanel}
-        onTogglePinnedMessages={() => setShowPinnedMessages(!showPinnedMessages)}
-        onRoomSettings={openRoomSettingsModal}
-      />
+    <div className="flex-1 flex h-full bg-background">
+      {/* Main Chat Area */}
+      <div className={cn(
+        "flex-1 flex flex-col h-full transition-all duration-300",
+        isContextualSidebarOpen && "lg:mr-0"
+      )}>
+        {/* Header */}
+        <ChatRoomHeader
+          roomName={roomName}
+          isGroup={isGroup}
+          participants={participants}
+          roomData={roomData}
+          isRoomAdmin={isRoomAdmin || false}
+          showSearch={showSearch}
+          showInfo={isInfoPanelOpen}
+          showPinnedMessages={showPinnedMessages}
+          pinnedMessagesCount={pinnedCount}
+          onToggleSearch={() => setShowSearch(!showSearch)}
+          onToggleInfo={toggleInfoPanel}
+          onTogglePinnedMessages={() => setShowPinnedMessages(!showPinnedMessages)}
+          onRoomSettings={openRoomSettingsModal}
+        />
 
       {/* Pinned Messages Panel */}
       <PinnedMessagesPanel
@@ -1134,11 +1153,12 @@ export function ChatRoom({
                   <div className="space-y-1.5">
                     {dateMessages.map((message, index) => {
                       const isSent = message.senderId === currentUser.id;
+                      // Slack-style: Always show avatar for first message or when sender changes
                       const showAvatar =
-                        !isSent &&
-                        (index === 0 ||
-                          dateMessages[index - 1]?.senderId !== message.senderId);
-                      const showName = isGroup && !isSent && showAvatar;
+                        index === 0 ||
+                        dateMessages[index - 1]?.senderId !== message.senderId;
+                      // Slack-style: Always show name when showing avatar
+                      const showName = showAvatar;
                       const isConsecutive = index > 0 && dateMessages[index - 1]?.senderId === message.senderId;
                       const spacing = isConsecutive ? "mt-0.5" : "mt-3";
 
@@ -1194,16 +1214,12 @@ export function ChatRoom({
             <div className="p-4">
               {/* Room Info */}
               <div className="text-center mb-6">
-                <div
-                  className={cn(
-                    "w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-2xl font-bold",
-                    isGroup
-                      ? "bg-gradient-to-br from-accent-400 to-pink-500"
-                      : "bg-gradient-to-br from-primary to-accent"
-                  )}
-                >
-                  {isGroup ? <Hash className="w-10 h-10" /> : getInitials(roomName)}
-                </div>
+                <UserAvatar
+                  name={roomName}
+                  isGroup={isGroup}
+                  size="xl"
+                  className="mx-auto mb-3"
+                />
                 <h3 className="font-semibold text-lg text-foreground">
                   {roomName}
                 </h3>
@@ -1262,16 +1278,12 @@ export function ChatRoom({
             <div className="mt-6">
               {/* Room Info */}
               <div className="text-center mb-6">
-                <div
-                  className={cn(
-                    "w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-2xl font-bold",
-                    isGroup
-                      ? "bg-gradient-to-br from-accent-400 to-pink-500"
-                      : "bg-gradient-to-br from-primary to-accent"
-                  )}
-                >
-                  {isGroup ? <Hash className="w-10 h-10" /> : getInitials(roomName)}
-                </div>
+                <UserAvatar
+                  name={roomName}
+                  isGroup={isGroup}
+                  size="xl"
+                  className="mx-auto mb-3"
+                />
                 <h3 className="font-semibold text-lg text-foreground">
                   {roomName}
                 </h3>
@@ -1323,19 +1335,12 @@ export function ChatRoom({
           router.refresh();
         }}
       >
-        <div className="border-t border-border bg-background">
-          <MessageInput
-            onSendMessage={handleSendMessage}
-            onTyping={handleTyping}
-            replyTo={replyingTo ? {
-              id: replyingTo.id,
-              content: replyingTo.content,
-              senderName: replyingTo.senderName,
-            } : null}
-            onCancelReply={() => setReplyingTo(null)}
-            mentionableUsers={mentionableUsers}
-          />
-        </div>
+        {/* WYSIWYG Rich Text Editor - Industry Standard */}
+        <WYSIWYGInput
+          onSendMessage={handleSendMessage}
+          placeholder="Type a message..."
+          disabled={false}
+        />
       </MessageInputErrorBoundary>
 
       {/* Search Dialog */}
@@ -1370,6 +1375,22 @@ export function ChatRoom({
           messageId={editingMessage.id}
           currentContent={editingMessage.content}
           onSave={handleSaveEdit}
+        />
+      )}
+      </div>
+
+      {/* Contextual Sidebar */}
+      {isContextualSidebarOpen && (
+        <ContextualSidebar
+          roomId={roomId}
+          currentUserId={currentUser.id}
+          onReply={handleReplyToMessage}
+          onEdit={handleEditMessage}
+          onDelete={handleDeleteMessage}
+          onReactionChange={async () => {
+            // Refresh messages when reactions change in sidebar
+            queryClient.invalidateQueries({ queryKey: ['messages', roomId] });
+          }}
         />
       )}
     </div>

@@ -257,6 +257,9 @@ export class MessageService {
       fileType: string | null;
       isEdited: boolean;
       isDeleted: boolean;
+      isPinned: boolean;
+      pinnedAt: string | null;
+      pinnedById: string | null;
       replyToId: string | null;
       replyTo: {
         id: string;
@@ -305,6 +308,9 @@ export class MessageService {
         fileType: message.fileType,
         isEdited: message.isEdited,
         isDeleted: message.isDeleted,
+        isPinned: message.isPinned || false,
+        pinnedAt: message.pinnedAt?.toISOString() || null,
+        pinnedById: message.pinnedById || null,
         replyToId: message.replyToId,
         replyTo: message.replyTo ? {
           id: message.replyTo.id,
@@ -312,6 +318,7 @@ export class MessageService {
           senderName: message.replyTo.sender.name,
           senderAvatar: message.replyTo.sender.avatar,
         } : null,
+        replyCount: message._count?.replies || 0, // Added reply count
         reactions: reactionsByEmoji,
         isRead: message.readReceipts.length > 0,
         createdAt: message.createdAt.toISOString(),

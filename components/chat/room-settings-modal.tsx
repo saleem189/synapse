@@ -97,10 +97,10 @@ export function RoomSettingsModal({
             <div className="relative">
               <div
                 className={cn(
-                  "w-24 h-24 rounded-2xl flex items-center justify-center text-white text-3xl font-bold",
+                  "w-24 h-24 rounded-2xl flex items-center justify-center text-3xl font-bold",
                   avatar
-                    ? "bg-gradient-to-br from-primary to-accent"
-                    : "bg-gradient-to-br from-primary to-accent"
+                    ? "bg-primary/20 text-primary"
+                    : "bg-primary/20 text-primary"
                 )}
                 style={
                   avatar && avatar.startsWith("http")

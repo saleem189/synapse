@@ -19,30 +19,24 @@ import {
   Hash,
   Shield,
   Filter,
+  Star,
+  BellOff,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { cn, getInitials, formatChatListTime } from "@/lib/utils";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarInput,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuBadge,
-  SidebarRail,
-  SidebarSeparator,
-} from "@/components/ui/sidebar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { logger } from "@/lib/logger";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { RoomFavoriteButton } from "./room-favorite-button";
+import { RoomMuteButton } from "./room-mute-button";
+import { FocusModeToggle } from "./focus-mode-toggle";
+import { isChannelMuted } from "@/features/mute-channels";
+import { useFocusMode, filterRoomsForFocusMode, getHiddenRoomsCount } from "@/features/focus-mode";
+import { useQuickSwitcher } from "@/hooks/use-quick-switcher";
 // Code split modals for better initial load performance
 import dynamic from "next/dynamic";
 
@@ -67,6 +61,9 @@ interface ChatRoomItem {
   id: string;
   name: string;
   isGroup: boolean;
+  isFavorite?: boolean; // Added for favorites
+  isMuted?: boolean; // Added for muting
+  mutedUntil?: string | null; // Added for temporary muting
   lastMessage?: {
     content: string;
     createdAt: string;
@@ -85,7 +82,6 @@ export function ChatSidebar() {
   // Get user from store (no shallow needed for primitive/null)
   const user = useUserStore((state) => state.user);
   const pathname = usePathname();
-  const [searchQuery, setSearchQuery] = useState("");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
   // Use UI store for modals
@@ -213,17 +209,35 @@ export function ChatSidebar() {
     }
   }, [pathname, clearUnreadCount]);
 
+  // Focus mode state (MUST be before early return - React Rules of Hooks)
+  const { isEnabled: isFocusModeEnabled } = useFocusMode();
+  
+  // Quick switcher hook
+  const openQuickSwitcher = useQuickSwitcher((state) => state.open);
+
   // Early return after ALL hooks are called
   if (!user) {
     return null; // Or show loading state
   }
 
-  // Filter rooms by search and unread status
-  const filteredRooms = rooms.filter((room) => {
-    const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter rooms by unread status only (search is now handled by Quick Switcher)
+  let filteredRooms = rooms.filter((room) => {
     const matchesUnread = showUnreadOnly ? (room.unreadCount || 0) > 0 : true;
-    return matchesSearch && matchesUnread;
+    return matchesUnread;
   });
+
+  // Apply focus mode filter if enabled
+  const allFilteredRooms = filteredRooms; // Keep reference to all filtered rooms
+  if (isFocusModeEnabled) {
+    filteredRooms = filterRoomsForFocusMode(filteredRooms);
+  }
+
+  // Calculate hidden count for focus mode
+  const hiddenRoomsCount = getHiddenRoomsCount(allFilteredRooms, filteredRooms);
+
+  // Separate favorites from other rooms
+  const favoriteRooms = filteredRooms.filter((room) => room.isFavorite);
+  const otherRooms = filteredRooms.filter((room) => !room.isFavorite);
 
   // Handle room created
   const handleRoomCreated = (newRoom: ChatRoomItem) => {
@@ -267,242 +281,314 @@ export function ChatSidebar() {
 
   return (
     <>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-white" />
+      {/* Slack-style Sidebar with Aubergine Background */}
+      <div className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar">
+        {/* Header */}
+        <div className="flex flex-col gap-3 p-4 border-b border-sidebar-border/50">
+          {/* Logo & Title */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                <MessageCircle className="w-5 h-5 text-sidebar" />
+              </div>
+              <span className="text-lg font-bold text-sidebar-foreground">
+                Synapse
+              </span>
             </div>
-            <span className="text-xl font-bold text-sidebar-foreground">
-              Synapse
-            </span>
           </div>
 
-          {/* Search */}
-          <SidebarGroup>
-            <SidebarGroupContent className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-muted-foreground pointer-events-none" />
-              <SidebarInput
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {/* Quick Actions */}
+          <div className="space-y-1.5">
+            {/* Quick Switcher Button - Slack-style */}
+            <button
+              onClick={openQuickSwitcher}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground/90 bg-sidebar-accent/50 hover:bg-sidebar-accent transition-base"
+            >
+              <Search className="w-4 h-4 text-sidebar-foreground/70" />
+              <span className="flex-1 text-left text-sidebar-foreground/80">Jump to...</span>
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-sidebar-border/30 bg-sidebar/40 px-1.5 font-mono text-[10px] font-medium text-sidebar-foreground/60">
+                <span>⌘</span>K
+              </kbd>
+            </button>
+            
+            {/* Filter Button */}
+            <button
+              onClick={() => setShowUnreadOnly(!showUnreadOnly)}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm transition-base",
+                showUnreadOnly
+                  ? "bg-sidebar-active text-white font-medium"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent"
+              )}
+            >
+              <Filter className="w-4 h-4" />
+              {showUnreadOnly ? "Show All" : "Unread Only"}
+              {showUnreadOnly && totalUnread > 0 && (
+                <span className="ml-auto px-1.5 py-0.5 text-xs font-bold bg-badge text-badge-text rounded">
+                  {totalUnread}
+                </span>
+              )}
+            </button>
+            
+            {/* Focus Mode Toggle */}
+            <FocusModeToggle hiddenCount={hiddenRoomsCount} />
+          </div>
 
-          {/* Filter Button */}
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <Button
-                onClick={() => setShowUnreadOnly(!showUnreadOnly)}
-                variant={showUnreadOnly ? "default" : "outline"}
-                className="w-full justify-center gap-2"
-                size="sm"
-              >
-                <Filter className="w-4 h-4" />
-                {showUnreadOnly ? "Show All" : "Unread Only"}
-                {showUnreadOnly && totalUnread > 0 && (
-                  <Badge variant="destructive" className="ml-auto">
-                    {totalUnread}
-                  </Badge>
-                )}
-              </Button>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {/* New Chat Button - Slack Primary Color */}
+          <button
+            onClick={openCreateRoomModal}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-semibold text-white bg-sidebar-primary hover:bg-sidebar-primary/90 transition-base shadow-sm press-effect"
+          >
+            <Plus className="w-4 h-4" />
+            New Message
+          </button>
+        </div>
 
-          {/* New Chat Button */}
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <Button
-                onClick={openCreateRoomModal}
-                className="w-full"
-                size="sm"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Chat
-              </Button>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarHeader>
-
-        <SidebarContent>
+        {/* Content */}
+        <ScrollArea className="flex-1 px-2">
           {isLoading ? (
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <div className="space-y-2">
-                  {[...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 p-2 animate-in fade-in-50 slide-in-from-left-4"
-                      style={{ animationDelay: `${i * 50}ms` }}
-                    >
-                      <Skeleton className="w-10 h-10 rounded-full" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ) : filteredRooms.length === 0 ? (
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <div className="flex flex-col items-center justify-center py-12 px-4 text-center animate-in fade-in-50 duration-300">
-                  <div className="w-16 h-16 rounded-full bg-sidebar-muted/20 flex items-center justify-center mb-4 animate-in zoom-in-95 duration-500">
-                    <Users className="w-8 h-8 text-sidebar-muted-foreground/60" />
+            <div className="space-y-2 p-2">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-2 animate-in fade-in-50 slide-in-from-left-4"
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
                   </div>
-                  <h3 className="text-sm font-semibold text-sidebar-foreground mb-1">
-                    {showUnreadOnly
-                      ? "No unread messages"
-                      : searchQuery
-                        ? "No conversations found"
-                        : "No conversations yet"}
-                  </h3>
-                  <p className="text-xs text-sidebar-muted-foreground max-w-[200px]">
-                    {showUnreadOnly
-                      ? "All caught up! Your conversations are up to date."
-                      : searchQuery
-                        ? "Try adjusting your search terms"
-                        : "Start a new conversation to get started"}
-                  </p>
                 </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
+              ))}
+            </div>
+          ) : filteredRooms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center animate-in fade-in-50 duration-300">
+              <div className="w-16 h-16 rounded-full bg-sidebar-muted/20 flex items-center justify-center mb-4 animate-in zoom-in-95 duration-500">
+                <Users className="w-8 h-8 text-sidebar-muted-foreground/60" />
+              </div>
+              <h3 className="text-sm font-semibold text-sidebar-foreground mb-1">
+                {showUnreadOnly
+                  ? "No unread messages"
+                  : "No conversations yet"}
+              </h3>
+              <p className="text-xs text-sidebar-muted-foreground max-w-[200px]">
+                {showUnreadOnly
+                  ? "All caught up! Your conversations are up to date."
+                  : "Start a new conversation to get started"}
+              </p>
+            </div>
           ) : (
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {filteredRooms.map((room) => {
+            <div className="space-y-4 pb-4">
+              {/* Favorite Rooms */}
+              {favoriteRooms.length > 0 && (
+                <div>
+                  <div className="px-3 py-1.5 text-[11px] font-bold text-sidebar-muted uppercase tracking-wider flex items-center gap-1.5">
+                    <Star className="w-3 h-3 fill-sidebar-primary text-sidebar-primary" />
+                    Starred
+                  </div>
+                  <div className="space-y-0.5 mt-1">
+                    {favoriteRooms.map((room) => {
+                      const isActive = pathname === `/chat/${room.id}`;
+                      const displayName = getRoomDisplayName(room);
+                      const isOnline = isRoomOnline(room);
+                      const isMutedNow = isChannelMuted(room.isMuted || false, room.mutedUntil || null);
+
+                      return (
+                        <div key={room.id} className="group relative">
+                          <Link
+                            href={`/chat/${room.id}`}
+                            className={cn(
+                              "flex items-center gap-2.5 px-2 py-1 mx-1 rounded transition-base",
+                              "hover:bg-sidebar-accent",
+                              isActive && "bg-sidebar-active",
+                              isMutedNow && "opacity-50"
+                            )}
+                          >
+                            <UserAvatar
+                              name={displayName}
+                              src={room.avatar}
+                              isGroup={room.isGroup}
+                              size="sm"
+                              showOnlineStatus={!room.isGroup}
+                              isOnline={isOnline}
+                              className="w-6 h-6"
+                            />
+                            <div className="flex-1 min-w-0 flex items-center gap-2">
+                              {/* Channel/DM name with unread indicator */}
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                {/* Unread dot indicator (white circle) */}
+                                {room.unreadCount && room.unreadCount > 0 && !isMutedNow && (
+                                  <div className="w-2 h-2 rounded-full bg-white flex-shrink-0" />
+                                )}
+                                <span className={cn(
+                                  "truncate transition-all text-[15px]",
+                                  room.unreadCount && room.unreadCount > 0 && !isMutedNow
+                                    ? "font-bold text-white"
+                                    : "font-normal text-sidebar-muted"
+                                )}>
+                                  {room.isGroup && "#"}{displayName}
+                                </span>
+                                {isMutedNow && (
+                                  <BellOff className="w-3 h-3 text-sidebar-muted/50 flex-shrink-0" />
+                                )}
+                              </div>
+                              {/* Unread badge (only for > 0) */}
+                              {room.unreadCount && room.unreadCount > 0 && !isMutedNow && (
+                                <span className="flex-shrink-0 px-1.5 min-w-[20px] h-5 flex items-center justify-center text-[11px] font-bold bg-badge text-badge-text rounded">
+                                  {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                                </span>
+                              )}
+                            </div>
+                          </Link>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1">
+                            <RoomMuteButton
+                              roomId={room.id}
+                              isMuted={room.isMuted || false}
+                              mutedUntil={room.mutedUntil || null}
+                            />
+                            <RoomFavoriteButton
+                              roomId={room.id}
+                              isFavorite={room.isFavorite || false}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* All Conversations */}
+              <div>
+                {favoriteRooms.length > 0 && (
+                  <div className="px-3 py-1.5 mt-3 text-[11px] font-bold text-sidebar-muted uppercase tracking-wider">
+                    Channels
+                  </div>
+                )}
+                <div className="space-y-0.5 mt-1">
+                  {otherRooms.map((room) => {
                     const isActive = pathname === `/chat/${room.id}`;
                     const displayName = getRoomDisplayName(room);
                     const isOnline = isRoomOnline(room);
+                    const isMutedNow = isChannelMuted(room.isMuted || false, room.mutedUntil || null);
 
                     return (
-                      <SidebarMenuItem key={room.id}>
-                        <SidebarMenuButton asChild isActive={isActive} size="lg">
-                          <Link href={`/chat/${room.id}`}>
-                            <div className="relative flex-shrink-0">
-                              <Avatar className={cn(
-                                "w-10 h-10",
-                                room.isGroup
-                                  ? "bg-gradient-to-br from-accent-400 to-pink-500"
-                                  : "bg-gradient-to-br from-primary to-accent"
+                      <div key={room.id} className="group relative">
+                        <Link
+                          href={`/chat/${room.id}`}
+                          className={cn(
+                            "flex items-center gap-2.5 px-2 py-1 mx-1 rounded transition-base",
+                            "hover:bg-sidebar-accent",
+                            isActive && "bg-sidebar-active",
+                            isMutedNow && "opacity-50"
+                          )}
+                        >
+                          <UserAvatar
+                            name={displayName}
+                            src={room.avatar}
+                            isGroup={room.isGroup}
+                            size="sm"
+                            showOnlineStatus={!room.isGroup}
+                            isOnline={isOnline}
+                            className="w-6 h-6"
+                          />
+                          <div className="flex-1 min-w-0 flex items-center gap-2">
+                            {/* Channel/DM name with unread indicator */}
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              {/* Unread dot indicator (white circle) */}
+                              {room.unreadCount && room.unreadCount > 0 && !isMutedNow && (
+                                <div className="w-2 h-2 rounded-full bg-white flex-shrink-0" />
+                              )}
+                              <span className={cn(
+                                "truncate transition-all text-[15px]",
+                                room.unreadCount && room.unreadCount > 0 && !isMutedNow
+                                  ? "font-bold text-white"
+                                  : "font-normal text-sidebar-muted"
                               )}>
-                                <AvatarImage src={room.avatar || undefined} alt={displayName} />
-                                <AvatarFallback className={cn(
-                                  "text-white font-semibold",
-                                  room.isGroup
-                                    ? "bg-gradient-to-br from-accent-400 to-pink-500"
-                                    : "bg-gradient-to-br from-primary to-accent"
-                                )}>
-                                  {room.isGroup ? <Hash className="w-5 h-5" /> : getInitials(displayName)}
-                                </AvatarFallback>
-                              </Avatar>
-                              {isOnline && (
-                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-sidebar-background" />
+                                {room.isGroup && "#"}{displayName}
+                              </span>
+                              {isMutedNow && (
+                                <BellOff className="w-3 h-3 text-sidebar-muted/50 flex-shrink-0" />
                               )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium truncate">
-                                  {displayName}
-                                </span>
-                                {room.lastMessage && (
-                                  <span className="text-xs text-sidebar-muted-foreground flex-shrink-0 ml-2">
-                                    {formatChatListTime(room.lastMessage.createdAt)}
-                                  </span>
-                                )}
-                              </div>
-                              {room.lastMessage && (
-                                <p className={cn(
-                                  "text-xs truncate",
-                                  room.unreadCount ? "text-sidebar-foreground font-medium" : "text-sidebar-muted-foreground"
-                                )}>
-                                  {room.lastMessage.senderName}: {room.lastMessage.content}
-                                </p>
-                              )}
-                            </div>
-                            {room.unreadCount && room.unreadCount > 0 && (
-                              <SidebarMenuBadge>
+                            {/* Unread badge (only for > 0) */}
+                            {room.unreadCount && room.unreadCount > 0 && !isMutedNow && (
+                              <span className="flex-shrink-0 px-1.5 min-w-[20px] h-5 flex items-center justify-center text-[11px] font-bold bg-badge text-badge-text rounded">
                                 {room.unreadCount > 99 ? "99+" : room.unreadCount}
-                              </SidebarMenuBadge>
+                              </span>
                             )}
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                          </div>
+                        </Link>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1">
+                          <RoomMuteButton
+                            roomId={room.id}
+                            isMuted={room.isMuted || false}
+                            mutedUntil={room.mutedUntil || null}
+                          />
+                          <RoomFavoriteButton
+                            roomId={room.id}
+                            isFavorite={room.isFavorite || false}
+                          />
+                        </div>
+                      </div>
                     );
                   })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
-        </SidebarContent>
-
-        <SidebarFooter>
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="relative flex-shrink-0">
-                <Avatar className="w-8 h-8 bg-gradient-to-br from-primary to-accent">
-                  <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-semibold text-xs">
-                    {getInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-sidebar-background" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-xs text-sidebar-foreground truncate flex items-center gap-1">
-                  {user.name}
-                  {user.role === "ADMIN" && (
-                    <Shield className="w-3 h-3 text-destructive flex-shrink-0" />
-                  )}
-                </p>
-                <p className="text-xs text-green-500">Online</p>
+                </div>
               </div>
             </div>
+          )}
+        </ScrollArea>
 
-            <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Footer - User Profile */}
+        <div className="border-t border-sidebar-border/50 p-2">
+          <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-sidebar-accent rounded transition-base cursor-pointer">
+            <UserAvatar
+              name={user.name}
+              src={user.avatar}
+              size="md"
+              showOnlineStatus
+              isOnline
+              className="w-9 h-9"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-[15px] text-sidebar-foreground truncate flex items-center gap-1">
+                {user.name}
+                {user.role === "ADMIN" && (
+                  <Shield className="w-3 h-3 text-badge flex-shrink-0" />
+                )}
+              </p>
+              <p className="text-[13px] text-sidebar-muted">Active</p>
+            </div>
+            <div className="flex items-center gap-0.5 flex-shrink-0">
               {user.role === "ADMIN" && (
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
+                <Link
+                  href="/admin"
+                  className="p-1.5 rounded hover:bg-white/10 transition-base"
                   title="Admin Dashboard"
                 >
-                  <Link href="/admin">
-                    <Shield className="w-4 h-4 text-destructive" />
-                  </Link>
-                </Button>
+                  <Shield className="w-4 h-4 text-badge" />
+                </Link>
               )}
-              <ThemeToggle className="h-8 w-8" />
-              <Button
+              <ThemeToggle className="p-1.5" />
+              <button
                 onClick={openSettingsModal}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
+                className="p-1.5 rounded hover:bg-white/10 transition-base text-sidebar-foreground/70 hover:text-sidebar-foreground"
                 title="Settings"
               >
                 <Settings className="w-4 h-4" />
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-sidebar-muted-foreground hover:text-destructive"
+                className="p-1.5 rounded hover:bg-white/10 transition-base text-sidebar-foreground/70 hover:text-badge"
                 title="Sign out"
               >
                 <LogOut className="w-4 h-4" />
-              </Button>
+              </button>
             </div>
           </div>
-        </SidebarFooter>
-
-        <SidebarRail />
-      </Sidebar>
+        </div>
+      </div>
 
       {/* Create Room Modal */}
       <CreateRoomModal

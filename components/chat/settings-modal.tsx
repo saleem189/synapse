@@ -10,11 +10,11 @@ import { useTheme as useNextTheme } from "next-themes";
 import { useTheme, useStyle } from "@/lib/design-system/providers";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
-import { cn, getInitials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { logger } from "@/lib/logger";
 import { useForm } from "react-hook-form";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -228,12 +228,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <FormLabel>Profile Picture</FormLabel>
                         <div className="flex items-center gap-4">
                           <div className="relative">
-                            <Avatar className="w-20 h-20 border-2 border-border">
-                              <AvatarImage src={avatar || undefined} alt={user.name} />
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xl font-semibold">
-                                {getInitials(user.name)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <UserAvatar
+                              name={user.name}
+                              src={avatar}
+                              size="xl"
+                              className="border-2 border-border"
+                            />
                             {isUploading && (
                               <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
                                 <Loader2 className="w-6 h-6 text-white animate-spin" />

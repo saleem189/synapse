@@ -7,8 +7,7 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { getInitials } from "@/lib/utils";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { MentionableUser } from "./types";
 
 interface MentionSuggestionsProps {
@@ -94,17 +93,13 @@ export function MentionSuggestions({
                                 : "hover:bg-accent hover:text-accent-foreground"
                         )}
                     >
-                        <div className="relative flex-shrink-0">
-                            <Avatar className="w-8 h-8">
-                                <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                                <AvatarFallback className="!bg-gradient-to-br !from-primary !to-accent !text-primary-foreground text-xs font-semibold">
-                                    {getInitials(user.name) || "?"}
-                                </AvatarFallback>
-                            </Avatar>
-                            {user.isOnline && (
-                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background" />
-                            )}
-                        </div>
+                        <UserAvatar
+                            name={user.name}
+                            src={user.avatar}
+                            size="sm"
+                            showOnlineStatus={true}
+                            isOnline={user.isOnline}
+                        />
                         <div className="flex-1 text-left min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">
                                 {user.name}

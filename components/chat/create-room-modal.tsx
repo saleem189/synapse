@@ -10,7 +10,8 @@ import { useRouter } from "next/navigation";
 import { X, Search, Check, Loader2, MessageCircle, Users } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
-import { cn, getInitials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { logger } from "@/lib/logger";
 import type { RoomResponse } from "@/lib/types";
 import {
@@ -329,9 +330,11 @@ export function CreateRoomModal({
                           target.addEventListener('touchmove', handleTouchMove, { once: true });
                         }}
                       >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-semibold">
-                          {getInitials(user.name)}
-                        </div>
+                        <UserAvatar
+                          name={user.name}
+                          src={user.avatar}
+                          size="md"
+                        />
                         <div className="flex-1">
                           <p className="font-medium text-foreground">
                             {user.name}

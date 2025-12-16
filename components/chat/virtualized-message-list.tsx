@@ -21,6 +21,8 @@ interface VirtualizedMessageListProps {
   onEdit: (messageId: string, content: string) => void;
   onDelete: (messageId: string) => Promise<void>;
   onReactionChange: (messageId: string) => Promise<void>;
+  onPin: (messageId: string) => Promise<void>;
+  onUnpin: (messageId: string) => Promise<void>;
   createLongPressHandlers: (message: Message) => {
     onTouchStart: (e: React.TouchEvent | React.MouseEvent) => void;
     onTouchEnd: (e: React.TouchEvent | React.MouseEvent) => void;
@@ -49,6 +51,8 @@ export function VirtualizedMessageList({
   onEdit,
   onDelete,
   onReactionChange,
+  onPin,
+  onUnpin,
   createLongPressHandlers,
   containerRef,
 }: VirtualizedMessageListProps) {
@@ -168,15 +172,19 @@ export function VirtualizedMessageList({
           );
         }
 
-        // Render message
+        // Render message - Slack-style (all messages on left, all show avatars)
         const message = item.message!;
         const dateMessages = item.dateMessages!;
         const index = item.index!;
         const isSent = message.senderId === currentUserId;
+        
+        // Slack-style: Show avatar when sender changes (for both sent and received)
         const showAvatar =
-          !isSent &&
-          (index === 0 || dateMessages[index - 1]?.senderId !== message.senderId);
-        const showName = isGroup && !isSent && showAvatar;
+          index === 0 || dateMessages[index - 1]?.senderId !== message.senderId;
+        
+        // Slack-style: Show name when sender changes (for both sent and received in groups)
+        const showName = isGroup && showAvatar;
+        
         const isConsecutive = index > 0 && dateMessages[index - 1]?.senderId === message.senderId;
         const spacing = isConsecutive ? "mt-0.5" : "mt-3";
 
@@ -206,6 +214,8 @@ export function VirtualizedMessageList({
               onEdit={onEdit}
               onDelete={onDelete}
               onReactionChange={() => onReactionChange(message.id)}
+              onPin={() => onPin(message.id)}
+              onUnpin={() => onUnpin(message.id)}
               createLongPressHandlers={createLongPressHandlers}
             />
           </div>

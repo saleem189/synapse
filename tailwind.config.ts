@@ -98,19 +98,31 @@ const config: Config = {
   		},
   		fontFamily: {
   			sans: [
-  				'var(--font-geist-sans)',
-  				'system-ui',
-  				'sans-serif'
-  			],
-  			display: [
-  				'var(--font-cabinet)',
-  				'system-ui',
+  				'Inter',
+  				'Lato',
+  				'-apple-system',
+  				'BlinkMacSystemFont',
+  				'Segoe UI',
+  				'Roboto',
   				'sans-serif'
   			],
   			mono: [
-  				'var(--font-geist-mono)',
+  				'Monaco',
+  				'Menlo',
+  				'Consolas',
+  				'Courier New',
   				'monospace'
   			]
+  		},
+  		fontSize: {
+  			'micro': ['0.625rem', { lineHeight: '1.2' }],      /* 10px */
+  			'label': ['0.6875rem', { lineHeight: '1.2' }],     /* 11px - timestamps, labels */
+  			'caption': ['0.8125rem', { lineHeight: '1.4' }],   /* 13px - secondary text */
+  			'body': ['0.9375rem', { lineHeight: '1.46668' }],  /* 15px - body (default) */
+  			'lg': ['1.125rem', { lineHeight: '1.5' }],         /* 18px - headings */
+  			'xl': ['1.25rem', { lineHeight: '1.4' }],          /* 20px - section titles */
+  			'2xl': ['1.5rem', { lineHeight: '1.3' }],          /* 24px - page titles */
+  			'3xl': ['1.875rem', { lineHeight: '1.2' }],        /* 30px - hero */
   		},
   		animation: {
   			'fade-in': 'fadeIn 0.5s ease-out forwards',
